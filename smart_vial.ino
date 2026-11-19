@@ -312,7 +312,9 @@ void setup() {
   pinMode(LED_PEAT_V, OUTPUT);
   pinMode(LED_AUTO_R, OUTPUT); pinMode(LED_AUTO_A, OUTPUT); pinMode(LED_AUTO_V, OUTPUT); pinMode(LED_PEAT_R, OUTPUT);
 
+  Serial.println(F("EV,Smart Vial iniciando"));
   Wire.begin();
+  Wire.setWireTimeout(3000, true);   // si la LCD esta mal conectada, no se traba
   byte dir = existeI2C(0x27) ? 0x27 : (existeI2C(0x3F) ? 0x3F : 0);
   if (dir) {
     lcd = new LiquidCrystal_I2C(dir, 16, 2);
