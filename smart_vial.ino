@@ -284,6 +284,10 @@ void comando(String c) {
     if (fase == VERDE || fase == ESPERA_AUTO) { pedido = true; evento("Boton de peaton (app)"); pitar(1, 60, 0, 1800); }
     else evento("El cruce ya esta en curso");
   }
+  else if (c == "PRUEBA_MX") {   // prende los 64 puntos 3 segundos
+    mxIniciar(); mxEnviar(0x0F, 1); evento("Prueba de matriz: todo encendido");
+    delay(3000); mxEnviar(0x0F, 0); mxDibujar(M_PARADO);
+  }
   else if (c == "MANT:1") cambiar(INTERMITENTE);
   else if (c == "MANT:0") { if (fase == INTERMITENTE) cambiar(VERDE); }
   else if (c == "SILENCIO:1") { silencio = true; noTone(BUZZER); evento("Buzzer silenciado"); }
@@ -336,4 +340,6 @@ void loop() {
   if (millis() - tSensor >= 60) { tSensor = millis(); leerSensores(); }
   actualizarFase();
   if (millis() - tSt >= 500) { tSt = millis(); enviarEstado(); }
+  static unsigned long tMx = 0;
+  if (millis() - tMx >= 5000) { tMx = millis(); mxEnviar(0x0F, 0); mxEnviar(0x09, 0); mxEnviar(0x0B, 7); mxEnviar(0x0A, 4); mxEnviar(0x0C, 1); }
 }
