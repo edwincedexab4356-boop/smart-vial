@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SMART VIAL · Tránsito inteligente</title>
+<meta name="description" content="Simulador de SMART VIAL: semáforo inteligente con cruce peatonal, Arduino UNO, sensores ultrasónicos, display de 7 segmentos, LCD, matriz 8x8 y buzzer.">
+<meta name="theme-color" content="#06101c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Ccircle cx='32' cy='16' r='9' fill='%23ff4757'/%3E%3Ccircle cx='32' cy='35' r='9' fill='%23ffb020'/%3E%3Ccircle cx='32' cy='54' r='7' fill='%2322e07a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06101c; --panel:#0c1726; --panel2:#132238; --line:#1f3350; --txt:#eef4fb; --mut:#8aa0bb;
+  --azul:#1fa3ff; --verde:#22e07a; --rojo:#ff4757; --ambar:#ffb020;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --tech: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 var(--tech);-webkit-tap-highlight-color:transparent}
+body{background-image:radial-gradient(1000px 500px at 10% -10%,#1fa3ff22,transparent),radial-gradient(800px 500px at 110% 110%,#ffd40012,transparent)}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--line);background:#081322e6;position:sticky;top:0;z-index:5;backdrop-filter:blur(8px)}
+.marca{display:flex;align-items:center;gap:12px;margin-right:auto}
+.marca img{height:52px;width:auto;background:#fff;border-radius:10px;padding:3px 6px}
+.marca small{color:var(--mut);font-size:12px;letter-spacing:.06em;display:block}
+.marca b{display:block;font-size:18px;letter-spacing:.1em}
+.btn{border:1px solid var(--line);background:var(--panel2);padding:9px 14px;border-radius:10px;font-weight:600;transition:transform .12s ease, background .15s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+@media (hover:hover){.btn:not(:disabled):hover{background:#1b2e4a}}
+.btn.az{background:#0b74c9;border-color:#1fa3ff}
+.btn.ve{background:#14833f;border-color:#1aa553}
+.btn.ro{background:#9b1c27;border-color:#c22a37}
+.btn.am{background:#8a5a00;border-color:#c98a00}
+.modo{font-size:12px;padding:5px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.modo.real{color:#9fe8ff;border-color:#2a6c8a;background:#0b2a38}
+nav{display:flex;gap:4px;padding:10px 20px 0;flex-wrap:wrap}
+.tab{border:0;background:transparent;color:var(--mut);padding:9px 14px;border-bottom:2px solid transparent;font-weight:600}
+.tab[aria-selected=true]{color:var(--txt);border-bottom-color:var(--azul)}
+main{padding:16px 20px 40px;max-width:1400px;margin:0 auto}
+.vista[hidden]{display:none}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.chip small{display:block;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.chip b{font-size:20px;font-variant-numeric:tabular-nums}
+.chip b.si{color:var(--verde)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h3{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.col{display:flex;flex-direction:column;gap:14px}
+svg{display:block;width:100%;height:auto}
+.fila{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fila+.fila{margin-top:10px}
+.etq{color:var(--mut);font-size:13px;min-width:110px}
+input[type=range]{flex:1;accent-color:var(--azul)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}
+/* hardware */
+.hw{display:grid;grid-template-columns:auto auto 1fr;gap:16px;align-items:center}
+.sem{background:#111;border:2px solid #2a2a2a;border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:7px;align-items:center}
+.sem i{width:30px;height:30px;border-radius:50%;background:#222;border:2px solid #333;transition:background .12s, box-shadow .12s;display:grid;place-items:center}
+.sem i svg{width:20px;height:20px;opacity:.35}
+.sem i.r.on{background:var(--rojo);box-shadow:0 0 16px var(--rojo)}
+.sem i.a.on{background:var(--ambar);box-shadow:0 0 16px var(--ambar)}
+.sem i.v.on{background:var(--verde);box-shadow:0 0 16px var(--verde)}
+.sem i.on svg{opacity:1}
+.sem span{font-size:10px;color:var(--mut);letter-spacing:.08em}
+.seg7{width:70px}
+.lcd{background:#0f3a8c;border:6px solid #1a1f2a;border-radius:8px;padding:8px 10px;font:18px/1.25 var(--mono);color:#cfe3ff;letter-spacing:.06em;white-space:pre;box-shadow:inset 0 0 18px #00000088;text-shadow:0 0 6px #9cc4ff88;overflow:hidden;margin-top:14px}
+.lcd.apagada{background:#0b1424;color:#2a3956;text-shadow:none}
+.mxw{display:flex;gap:14px;align-items:center;margin-top:14px}
+.matriz{display:grid;grid-template-columns:repeat(8,12px);gap:3px;padding:8px;background:#111;border-radius:8px;border:1px solid #2a2a2a}
+.matriz i{width:12px;height:12px;border-radius:50%;background:#2a0b0b}
+.matriz i.on{background:#ff3b3b;box-shadow:0 0 6px #ff3b3b}
+.buz{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut)}
+.buz i{width:14px;height:14px;border-radius:50%;background:#333}
+.buz.on i{background:var(--ambar);box-shadow:0 0 10px var(--ambar)}
+.log{height:230px;overflow:auto;font:12.5px/1.5 var(--mono);background:#060c16;border:1px solid var(--line);border-radius:10px;padding:8px}
+.log div{padding:1px 0;color:#cfe0f5}
+.log div.malo{color:#ff8a95}
+.log time{color:#5f7593;margin-right:8px}
+.aviso{padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:10px}
+.aviso.bien{background:#0f2e1f;border:1px solid #1d6b43}
+.aviso.malo{background:#33121a;border:1px solid #7a2433}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+code{font-family:var(--mono);background:#0a1626;border:1px solid var(--line);padding:1px 6px;border-radius:6px;font-size:13px}
+pre{background:#060c16;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font:12.5px/1.5 var(--mono);max-height:70vh}
+.pin{display:inline-block;min-width:44px;text-align:center;font-weight:700;border-radius:6px;padding:1px 6px;background:#132238;border:1px solid var(--line);font-family:var(--mono)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:900px){.dos{grid-template-columns:1fr}}
+.foto{width:100%;border-radius:12px;border:1px solid var(--line)}
+.nota{color:var(--mut);font-size:13px}
+ul.lista{margin:0;padding-left:18px}
+ul.lista li{margin:4px 0}
+.cable{display:inline-block;width:22px;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="marca">
+    <img src="logo.jpg" alt="Smart Vial">
+    <div><b>SMART VIAL</b><small>Tránsito inteligente · Arduino UNO</small></div>
+  </div>
+  <span id="modo" class="modo">Simulación</span>
+  <button class="btn az" id="bUsb">Conectar USB</button>
+  <button class="btn az" id="bBt">Conectar Bluetooth</button>
+  <button class="btn" id="bDesc" disabled>Desconectar</button>
+</header>
+<nav role="tablist">
+  <button class="tab" role="tab" data-v="sim" aria-selected="true">Simulador</button>
+  <button class="tab" role="tab" data-v="con">Conexiones</button>
+  <button class="tab" role="tab" data-v="pro">Comandos</button>
+  <button class="tab" role="tab" data-v="cod">Código</button>
+  <button class="tab" role="tab" data-v="info">El proyecto</button>
+</nav>
+<main>
+
+<!-- ===================== SIMULADOR ===================== -->
+<section class="vista" id="v-sim">
+  <div class="chips">
+    <div class="chip"><small>Fase</small><b id="cFase">—</b></div>
+    <div class="chip"><small>Sensor peatón</small><b id="cP">—</b></div>
+    <div class="chip"><small>Sensor vehículo</small><b id="cV">—</b></div>
+    <div class="chip"><small>Velocidad vehículo</small><b id="cVel">—</b></div>
+    <div class="chip"><small>Cruces</small><b id="cCr">0</b></div>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <div class="card" style="padding:8px">
+        <svg id="escena" viewBox="0 0 900 520" role="img" aria-label="Cruce peatonal con semáforos">
+          <defs>
+            <pattern id="cesped" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#1d5a2c"/><circle cx="4" cy="5" r="1" fill="#2a7a3d"/><circle cx="12" cy="12" r="1" fill="#2a7a3d"/></pattern>
+            <pattern id="acera" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#8f97a3"/><path d="M0 0H24V24" fill="none" stroke="#7b838f" stroke-width="1.2"/></pattern>
+            <radialGradient id="haz"><stop offset="0" stop-color="#1fa3ff" stop-opacity=".45"/><stop offset="1" stop-color="#1fa3ff" stop-opacity="0"/></radialGradient>
+          </defs>
+          <rect width="900" height="520" fill="url(#cesped)"/>
+          <!-- edificios -->
+          <g id="edif"></g>
+          <rect x="0" y="120" width="900" height="65" fill="url(#acera)"/>
+          <rect x="0" y="335" width="900" height="65" fill="url(#acera)"/>
+          <rect x="0" y="183" width="900" height="4" fill="#d9c100"/>
+          <rect x="0" y="333" width="900" height="4" fill="#d9c100"/>
+          <rect x="0" y="187" width="900" height="146" fill="#2b2f36"/>
+          <g id="lineaCentro"></g>
+          <g id="cebra"></g>
+          <rect x="400" y="187" width="5" height="73" fill="#f2f2f2"/>
+          <rect x="495" y="260" width="5" height="73" fill="#f2f2f2"/>
+          <text x="20" y="215" fill="#ffffff55" font-size="14" font-family="Chakra Petch">→</text>
+          <text x="870" y="310" fill="#ffffff55" font-size="14" font-family="Chakra Petch">←</text>
+          <!-- haz del sensor de vehículos -->
+          <path id="hazV" d="M398 200 L160 186 L160 258 Z" fill="url(#haz)" opacity=".5"/>
+          <!-- haz del sensor de peatón -->
+          <path id="hazP" d="M447 150 L600 128 L600 178 Z" fill="url(#haz)" opacity=".5"/>
+          <g id="autos"></g>
+          <g id="peatones"></g>
+          <!-- sensores -->
+          <g transform="translate(398 192)"><rect x="-4" y="-7" width="10" height="16" rx="2" fill="#1fa3ff"/><circle cx="-4" cy="-2" r="2.6" fill="#c9d6e6"/><circle cx="-4" cy="4" r="2.6" fill="#c9d6e6"/></g>
+          <text x="300" y="178" fill="#e6f2ff" font-size="11" font-family="Chakra Petch">Sensor vehículo</text>
+          <g transform="translate(442 150)"><rect x="-6" y="-8" width="10" height="16" rx="2" fill="#1fa3ff"/><circle cx="4" cy="-3" r="2.6" fill="#c9d6e6"/><circle cx="4" cy="3" r="2.6" fill="#c9d6e6"/></g>
+          <text x="455" y="135" fill="#e6f2ff" font-size="11" font-family="Chakra Petch">Sensor peatón</text>
+          <!-- semáforos de autos -->
+          <g id="semA1" transform="translate(372 120)"></g>
+          <g id="semA2" transform="translate(508 342)"></g>
+          <!-- semáforos de peatones -->
+          <g id="semP1" transform="translate(486 128)"></g>
+          <g id="semP2" transform="translate(396 342)"></g>
+          <!-- display 7 seg en la escena -->
+          <g transform="translate(520 52)">
+            <rect x="0" y="0" width="58" height="62" rx="8" fill="#0b0b0b" stroke="#333"/>
+            <g id="seg7esc" transform="translate(14 8) scale(.6)"></g>
+          </g>
+          <!-- LCD en la escena -->
+          <g transform="translate(590 52)">
+            <rect x="0" y="0" width="200" height="62" rx="6" fill="#1a1f2a"/>
+            <rect x="8" y="8" width="184" height="46" rx="3" fill="#0f3a8c" id="lcdEscFondo"/>
+            <text id="lcdE1" x="14" y="27" fill="#cfe3ff" font-size="15" font-family="Consolas, monospace"></text>
+            <text id="lcdE2" x="14" y="46" fill="#cfe3ff" font-size="15" font-family="Consolas, monospace"></text>
+          </g>
+          <!-- matriz en la escena -->
+          <g transform="translate(450 50)">
+            <rect x="0" y="0" width="64" height="64" rx="6" fill="#111" stroke="#333"/>
+            <g id="mxEsc" transform="translate(4 4)"></g>
+          </g>
+          <text id="alerta" x="450" y="505" text-anchor="middle" fill="#ff4757" font-size="20" font-weight="700" font-family="Chakra Petch" opacity="0">¡ALERTA! VEHÍCULO NO FRENA</text>
+        </svg>
+      </div>
+      <div class="card" id="ctrlSim">
+        <h3>Probar en la simulación</h3>
+        <div class="fila">
+          <button class="btn ve" id="bPeaton">🚶 Llega un peatón</button>
+          <button class="btn az" id="bAuto">🚗 Llega un auto</button>
+          <button class="btn ro" id="bInfractor">🚨 Auto que no frena</button>
+          <label class="chk"><input type="checkbox" id="chkTrafico" checked> Tráfico automático</label>
+        </div>
+        <p class="nota" style="margin:10px 0 0">El peatón se para frente al sensor y pide paso solo. Si hay un auto en el cruce, espera a que pase. El "auto que no frena" llega rápido con la luz en rojo para probar la alerta.</p>
+      </div>
+      <div class="card">
+        <h3>Bitácora</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3>Hardware</h3>
+        <div class="hw">
+          <div class="sem" aria-label="Semáforo de autos">
+            <i class="r" id="lAR"></i><i class="a" id="lAA"></i><i class="v" id="lAV"></i><span>AUTOS</span>
+          </div>
+          <div class="sem" aria-label="Semáforo de peatones">
+            <i class="r" id="lPR"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="12" cy="4" r="2.6"/><path d="M8.5 8h7l-.8 7h-1.5l-.4 7h-1.6l-.4-7H9.3z"/></g></svg></i>
+            <i class="v" id="lPV"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="13" cy="3.6" r="2.4"/><path d="M11 7.5l3 .5 2.5 4-1.4.9-1.8-2.6-.8 3.7 2.5 3-.4 5h-1.8l.2-4.2-2.6-2.6-1.5 3.6-3.4 3.1-1.2-1.3 3-2.8z"/></g></svg></i>
+            <span>PEATÓN</span>
+          </div>
+          <div>
+            <svg class="seg7" viewBox="0 0 60 100" id="seg7hw"></svg>
+            <div class="buz" id="buz" style="margin-top:10px"><i></i> Buzzer</div>
+          </div>
+        </div>
+        <div class="lcd" id="lcd"></div>
+        <div class="mxw">
+          <div class="matriz" id="mx"></div>
+          <div class="nota">Matriz 8x8 (MAX7219):<br>muñeco parado = espere<br>muñeco caminando = cruce<br>"!" = mantenimiento</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Control (app)</h3>
+        <div class="fila">
+          <button class="btn ve" id="bBoton">Botón de peatón</button>
+          <button class="btn am" id="bMant">Mantenimiento</button>
+          <button class="btn" id="bSil">Silenciar buzzer</button>
+        </div>
+        <div class="fila"><span class="etq">Peatón ≤ <b id="tUP">20</b> cm</span><input type="range" id="rUP" min="5" max="60" value="20"></div>
+        <div class="fila"><span class="etq">Vehículo ≤ <b id="tUV">15</b> cm</span><input type="range" id="rUV" min="5" max="60" value="15"></div>
+        <div class="fila">
+          <label class="chk"><input type="checkbox" id="chkSon" checked> Sonido del buzzer</label>
+          <label class="chk"><input type="checkbox" id="chkVoz" checked> Voz</label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Conexión</h3>
+        <div class="aviso" id="soporte"></div>
+        <p class="nota" style="margin:0">Con <b>Conectar USB</b> (cable) o <b>Conectar Bluetooth</b> (HC-05 emparejado) la página deja de simular y muestra lo que mide el Arduino real.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CONEXIONES ===================== -->
+<section class="vista" id="v-con" hidden>
+  <div class="dos">
+    <div class="card">
+      <h3>Pines del Arduino UNO</h3>
+      <table>
+        <tr><th>Pin</th><th>Va a</th></tr>
+        <tr><td><span class="pin">D0</span></td><td>TX del módulo de comunicación (HC-05 / WiFi)</td></tr>
+        <tr><td><span class="pin">D1</span></td><td>RX del módulo, <b>con divisor</b> (ver abajo)</td></tr>
+        <tr><td><span class="pin">D2</span></td><td>TRIG ultrasónico <b>peatón</b></td></tr>
+        <tr><td><span class="pin">D3</span></td><td>ECHO ultrasónico <b>peatón</b></td></tr>
+        <tr><td><span class="pin">D4</span></td><td>TRIG ultrasónico <b>vehículo</b></td></tr>
+        <tr><td><span class="pin">D5</span></td><td>ECHO ultrasónico <b>vehículo</b></td></tr>
+        <tr><td><span class="pin">D6</span></td><td>Buzzer (+). El (−) a GND</td></tr>
+        <tr><td><span class="pin">D7</span></td><td>74HC595 pin 14 (DS, datos) → 7 segmentos</td></tr>
+        <tr><td><span class="pin">D8</span></td><td>74HC595 pin 12 (ST_CP, latch)</td></tr>
+        <tr><td><span class="pin">D9</span></td><td>74HC595 pin 11 (SH_CP, reloj)</td></tr>
+        <tr><td><span class="pin">D10</span></td><td>Matriz MAX7219 <b>CS</b></td></tr>
+        <tr><td><span class="pin">D11</span></td><td>Matriz MAX7219 <b>DIN</b></td></tr>
+        <tr><td><span class="pin">D12</span></td><td>LED <b style="color:var(--verde)">verde peatón</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">D13</span></td><td>Matriz MAX7219 <b>CLK</b></td></tr>
+        <tr><td><span class="pin">A0</span></td><td>LED <b style="color:var(--rojo)">rojo autos</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">A1</span></td><td>LED <b style="color:var(--ambar)">amarillo autos</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">A2</span></td><td>LED <b style="color:var(--verde)">verde autos</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">A3</span></td><td>LED <b style="color:var(--rojo)">rojo peatón</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">A4</span></td><td>SDA de la LCD I2C</td></tr>
+        <tr><td><span class="pin">A5</span></td><td>SCL de la LCD I2C</td></tr>
+      </table>
+      <p class="nota">Los LEDs: pata larga (+) al pin con su resistencia de 220 Ω y pata corta (−) a GND. Para que se vean mejor en la maqueta, pueden poner 2 semáforos de autos (uno por carril) conectados en paralelo a los mismos pines, cada LED con su resistencia.</p>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>Cada módulo</h3>
+        <table>
+          <tr><th>Módulo</th><th>Conexión</th></tr>
+          <tr><td>2 × HC-SR04</td><td>VCC → 5V · GND → GND · TRIG/ECHO como la tabla. El de <b>peatón</b> en la acera mirando hacia donde se para la persona; el de <b>vehículo</b> en la orilla de la calle, mirando hacia los autos que llegan.</td></tr>
+          <tr><td>LCD 16x2 I2C</td><td>VCC → 5V · GND → GND · SDA → A4 · SCL → A5. Si no se ven letras, giren el tornillo azul de atrás (contraste).</td></tr>
+          <tr><td>Matriz 8x8 MAX7219</td><td>VCC → 5V · GND → GND · DIN → D11 · CS → D10 · CLK → D13 (lado de entrada, el de "DIN").</td></tr>
+          <tr><td>Display 7 segmentos (1 dígito)</td><td>Con un <b>74HC595</b>: pin 16 y 10 → 5V · pin 8 y 13 → GND · 14 → D7 · 12 → D8 · 11 → D9.<br>Salidas a los segmentos, cada una con 220 Ω: <b>Q0 (pin 15) → a</b>, Q1 (1) → b, Q2 (2) → c, Q3 (3) → d, Q4 (4) → e, Q5 (5) → f, Q6 (6) → g. El común del display a <b>GND</b> (cátodo común). Si es ánodo común: común a 5V y en el código <code>ANODO_COMUN = true</code>.</td></tr>
+          <tr><td>Buzzer</td><td>(+) → D6 · (−) → GND</td></tr>
+          <tr><td>HC-05</td><td>VCC → 5V · GND → GND · TXD → D0 · RXD ← D1 con divisor: D1 → 1 kΩ → RXD → 2 kΩ → GND (o con 220 Ω: 1 de arriba y 2 en serie abajo).</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Antes de subir el programa</h3>
+        <ul class="lista">
+          <li>En el Arduino IDE instalen la librería <b>LiquidCrystal I2C</b> (Frank de Brabander).</li>
+          <li>Placa: <b>Arduino UNO</b>.</li>
+          <li><b>Quiten el cable de D0</b> mientras suben el programa. Después lo vuelven a poner.</li>
+          <li>Al encender, todas las luces prenden 1 segundo y el display muestra 8: así comprueban que todo está bien conectado.</li>
+          <li>Si el muñeco de la matriz sale al revés: <code>ESPEJO_MATRIZ = true</code>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Materiales</h3>
+        <ul class="lista">
+          <li>Arduino UNO + cable USB</li>
+          <li>2 sensores ultrasónicos HC-SR04</li>
+          <li>LEDs: 2 rojos, 1 amarillo, 2 verdes (o el doble si ponen 2 semáforos) + resistencias de 220 Ω</li>
+          <li>Display de 7 segmentos de 1 dígito + 74HC595 + 7 resistencias de 220 Ω</li>
+          <li>LCD 16x2 con módulo I2C</li>
+          <li>Matriz 8x8 con MAX7219</li>
+          <li>Buzzer</li>
+          <li>Módulo de comunicación: HC-05 (o el módulo WiFi que tengan)</li>
+          <li>Protoboard y cables macho-macho / macho-hembra</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COMANDOS ===================== -->
+<section class="vista" id="v-pro" hidden>
+  <div class="card">
+    <h3>Cómo funciona</h3>
+    <ol class="lista">
+      <li><b>Normal:</b> autos en verde, peatón en rojo. LCD: "SMART VIAL / Autos: SIGA". Matriz: muñeco parado.</li>
+      <li><b>Llega un peatón</b> (el sensor lo ve 3 veces seguidas a 20 cm o menos): pide paso. Los autos tienen al menos 6 segundos de verde.</li>
+      <li>Si el sensor de vehículos ve un <b>auto en el cruce</b>, el peatón espera hasta que pase (máximo 8 segundos).</li>
+      <li><b>Amarillo</b> 2,5 s → <b>rojo para todos</b> 1 s.</li>
+      <li><b>Cruce:</b> verde del peatón, el display cuenta <b>9 → 0</b>, LCD "PUEDE CRUZAR 9s", la matriz muestra el muñeco caminando y el buzzer pita cada segundo (más rápido en los últimos 3, con el verde parpadeando).</li>
+      <li>Si durante el cruce un auto se acerca a más de 25 cm/s: <b>alerta</b> "¡AUTO NO FRENA!" con pitidos.</li>
+      <li><b>Fin:</b> peatón en rojo, 1,5 s después autos en verde.</li>
+    </ol>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Comandos que recibe el Arduino (9600, una línea cada uno)</h3>
+    <table>
+      <tr><th>Comando</th><th>Qué hace</th></tr>
+      <tr><td><code>PEATON</code></td><td>Botón de peatón desde la app: pide el cruce</td></tr>
+      <tr><td><code>MANT:1</code> · <code>MANT:0</code></td><td>Modo mantenimiento (amarillo y rojo peatón intermitentes) · volver a normal</td></tr>
+      <tr><td><code>SILENCIO:1</code> · <code>SILENCIO:0</code></td><td>Apagar / prender el buzzer</td></tr>
+      <tr><td><code>UMBRAL_P:20</code></td><td>Distancia (cm) a la que se detecta al peatón</td></tr>
+      <tr><td><code>UMBRAL_V:15</code></td><td>Distancia (cm) a la que se detecta al vehículo</td></tr>
+      <tr><td><code>ESTADO</code></td><td>Pide el estado y el texto de la LCD</td></tr>
+    </table>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Lo que manda el Arduino</h3>
+    <table>
+      <tr><th>Línea</th><th>Significado</th></tr>
+      <tr><td><code>ST,fase,aR,aA,aV,pR,pV,cuenta,dP,dV,vel,peaton,vehiculo,pedido,cruces,silencio,umbP,umbV,lcd</code></td><td>Estado cada 0,5 s. Fase: 0 verde, 1 espera auto, 2 amarillo, 3 rojo, 4 cruce, 5 fin, 6 mantenimiento. Cuenta −1 = display apagado.</td></tr>
+      <tr><td><code>LC,línea1,línea2</code></td><td>Texto de la LCD</td></tr>
+      <tr><td><code>EV,texto</code></td><td>Evento para la bitácora</td></tr>
+      <tr><td><code>BZ,veces,ms,pausa</code></td><td>El buzzer sonó</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== CÓDIGO ===================== -->
+<section class="vista" id="v-cod" hidden>
+  <div class="card">
+    <div class="fila" style="margin-bottom:10px">
+      <a class="btn az" href="smart_vial.ino" download style="text-decoration:none">Descargar smart_vial.ino</a>
+      <button class="btn" id="bCopiar">Copiar código</button>
+      <span class="nota">Arduino UNO · librería LiquidCrystal I2C · compila con 51 % de la memoria</span>
+    </div>
+    <pre id="codigo">Cargando…</pre>
+  </div>
+</section>
+
+<!-- ===================== PROYECTO ===================== -->
+<section class="vista" id="v-info" hidden>
+  <div class="dos">
+    <div class="card">
+      <h3>¿Cómo funciona Smart Vial?</h3>
+      <ul class="lista">
+        <li><b>Sensor ultrasónico:</b> detecta cuando un peatón se acerca al cruce y envía una señal al Arduino.</li>
+        <li><b>Luces LED:</b> al detectar al peatón, el Arduino activa la luz roja para los vehículos y la verde para los peatones, permitiendo el cruce seguro.</li>
+        <li><b>Sensor de vehículos:</b> detecta cuando hay un automóvil cerca del cruce y calcula a qué velocidad se acerca.</li>
+        <li><b>Display de 7 segmentos:</b> cuenta de 9 a 0 el tiempo que tiene el peatón para cruzar.</li>
+        <li><b>LCD:</b> indica "PUEDE CRUZAR", "ESPERE" o la alerta.</li>
+        <li><b>Matriz 8x8:</b> muestra al muñeco parado o caminando.</li>
+        <li><b>Buzzer:</b> pitidos de cruce para personas con poca visión y alarma si un auto no frena.</li>
+        <li><b>Arduino UNO:</b> recibe la información de los sensores y controla todo automáticamente.</li>
+        <li><b>Módulo de comunicación:</b> transmite el estado del sistema de forma inalámbrica a esta página.</li>
+      </ul>
+      <p style="margin-top:14px"><b>Smart Vial:</b> tecnología inteligente para mejorar la seguridad vial y proteger a los peatones.</p>
+      <img src="logo.jpg" alt="Logo de Smart Vial" class="foto" style="background:#fff;margin-top:10px">
+    </div>
+    <div class="card">
+      <h3>Maqueta de referencia (imagen ilustrativa)</h3>
+      <img src="maqueta.jpg" alt="Maqueta ilustrativa del semáforo inteligente" class="foto">
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs, padre) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (padre) padre.appendChild(e); return e; };
+
+/* ---------- pestañas ---------- */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x === b));
+  document.querySelectorAll('.vista').forEach(v => v.hidden = v.id !== 'v-' + b.dataset.v);
+});
+
+/* ---------- estado mostrado (del Arduino real o del virtual) ---------- */
+const FASES = ['Autos en verde','Espera al auto','Amarillo','Todo en rojo','Peatón cruza','Fin del cruce','Mantenimiento'];
+const S = { modo:'sim', fase:0, aR:0, aA:0, aV:1, pR:1, pV:0, cuenta:-1, dP:300, dV:300, vel:0, peaton:0, vehiculo:0, pedido:0, cruces:0, sil:0, umbP:20, umbV:15, lcdOk:1, lcd:['  SMART VIAL',''], vivo:Date.now() };
+
+/* ---------- bitácora ---------- */
+function log(t, malo){
+  const d = document.createElement('div');
+  if (malo) d.className = 'malo';
+  d.innerHTML = '<time>' + new Date().toLocaleTimeString('es', {hour12:false}) + '</time>' + t;
+  const L = $('log'); L.prepend(d);
+  while (L.children.length > 150) L.lastChild.remove();
+}
+
+/* ---------- sonido y voz ---------- */
+let ac = null;
+document.addEventListener('pointerdown', () => { if (!ac) try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} else if (ac.state === 'suspended') ac.resume(); }, {capture:true});
+function sonarBuzzer(veces, on, off){
+  let t = 0;
+  for (let k = 0; k < veces; k++) {
+    setTimeout(() => $('buz').classList.add('on'), t);
+    setTimeout(() => $('buz').classList.remove('on'), t + on);
+    if (ac && $('chkSon').checked && !S.sil) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = 2400; g.gain.value = .04;
+      o.connect(g).connect(ac.destination);
+      const t0 = ac.currentTime + t / 1000; o.start(t0); o.stop(t0 + on / 1000);
+    }
+    t += on + off;
+  }
+}
+function hablar(t){
+  if (!$('chkVoz').checked || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(t); u.lang = 'es-ES'; u.rate = 1.05;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- protocolo (igual para el real y el simulado) ---------- */
+function procesar(linea){
+  const p = linea.split(',');
+  if (p[0] === 'ST' && p.length >= 19) {
+    const n = p.slice(1).map(Number);
+    [S.fase, S.aR, S.aA, S.aV, S.pR, S.pV, S.cuenta, S.dP, S.dV, S.vel, S.peaton, S.vehiculo, S.pedido, S.cruces, S.sil, S.umbP, S.umbV, S.lcdOk] = n;
+    S.vivo = Date.now();
+    pintar();
+  } else if (p[0] === 'EV') {
+    const t = p.slice(1).join(',');
+    log(esc(t), /ALERTA|desconocido|No se encontro/i.test(t));
+    if (/^PUEDE CRUZAR/.test(t)) hablar('Puede cruzar');
+    if (/^ALERTA/.test(t)) { hablar('Atención, vehículo no frena'); alertaHasta = Date.now() + 2500; }
+    if (/^Fin del cruce/.test(t)) hablar('No cruce');
+  } else if (p[0] === 'LC') {
+    S.lcd = [p[1] || '', p.slice(2).join(',')];
+    pintar();
+  } else if (p[0] === 'BZ') {
+    sonarBuzzer(+p[1] || 1, +p[2] || 100, +p[3] || 0);
+  }
+}
+function mandar(c){
+  if (S.modo === 'real') enviarReal(c); else VA.comando(c);
+}
+
+/* ---------- dibujos: los mismos que el Arduino ---------- */
+const M_PARADO  = [0x18,0x18,0x00,0x3C,0x5A,0x18,0x24,0x24];
+const M_CAMINA1 = [0x0C,0x0C,0x00,0x1C,0x2E,0x0C,0x14,0x22];
+const M_CAMINA2 = [0x0C,0x0C,0x00,0x1C,0x1C,0x0C,0x0C,0x14];
+const M_ALERTA  = [0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x18];
+const DIGITOS   = [0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F];
+function glifo(){
+  if (S.fase === 6) return M_ALERTA;
+  if (S.fase === 4) return (Math.floor(Date.now() / 300) % 2) ? M_CAMINA1 : M_CAMINA2;
+  return M_PARADO;
+}
+const mxEl = $('mx'), mxEsc = $('mxEsc');
+for (let k = 0; k < 64; k++) {
+  mxEl.appendChild(document.createElement('i'));
+  svgEl('circle', { cx:(k % 8) * 7 + 4, cy:Math.floor(k / 8) * 7 + 4, r:2.7, fill:'#2a0b0b' }, mxEsc);
+}
+// 7 segmentos (a..g)
+const SEG = [
+  [10,4,40,8],[48,10,8,36],[48,54,8,36],[10,88,40,8],[4,54,8,36],[4,10,8,36],[10,46,40,8]
+];
+function crearSeg(padre){
+  return SEG.map(([x,y,w,h]) => svgEl('rect', { x, y, width:w, height:h, rx:4, fill:'#2a0b0b' }, padre));
+}
+svgEl('rect', { x:0, y:0, width:60, height:100, rx:8, fill:'#0b0b0b' }, $('seg7hw'));
+const segHW = crearSeg($('seg7hw')), segEsc = crearSeg($('seg7esc'));
+
+/* ---------- escena ---------- */
+(function decorar(){
+  const ed = $('edif');
+  const cols = ['#8e9fc3','#b7a3c9','#c9b48f','#9ab8b0','#a9b4c4'];
+  for (let i = 0; i < 9; i++) {
+    const x = 10 + i * 100, w = 80;
+    if (x > 360 && x < 800) continue;
+    const g = svgEl('g', {}, ed);
+    svgEl('rect', { x, y:12, width:w, height:96, rx:4, fill:cols[i % 5] }, g);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) svgEl('rect', { x:x + 10 + c * 23, y:22 + r * 28, width:14, height:16, fill:'#ffe08a', opacity:.85 }, g);
+  }
+  for (let i = 0; i < 9; i++) {
+    const x = 10 + i * 100, w = 80;
+    const g = svgEl('g', {}, ed);
+    if (i % 3 === 1) { svgEl('circle', { cx:x + 40, cy:460, r:30, fill:'#2f8a45' }, g); svgEl('circle', { cx:x + 30, cy:450, r:14, fill:'#3fa65a' }, g); continue; }
+    svgEl('rect', { x, y:412, width:w, height:100, rx:4, fill:cols[(i + 2) % 5] }, g);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) svgEl('rect', { x:x + 10 + c * 23, y:424 + r * 28, width:14, height:16, fill:'#ffe08a', opacity:.85 }, g);
+  }
+  for (let x = 10; x < 900; x += 50) if (x < 380 || x > 520) svgEl('rect', { x, y:258, width:28, height:4, fill:'#e8e8e8' }, $('lineaCentro'));
+  for (let y = 192; y < 330; y += 20) svgEl('rect', { x:418, y, width:64, height:11, fill:'#f2f2f2' }, $('cebra'));
+})();
+function crearSemAuto(g){
+  svgEl('rect', { x:8, y:30, width:4, height:24, fill:'#333' }, g);
+  svgEl('rect', { x:0, y:0, width:20, height:52, rx:5, fill:'#111', stroke:'#444' }, g);
+  return ['#ff4757','#ffb020','#22e07a'].map((c, i) => svgEl('circle', { cx:10, cy:9 + i * 17, r:6, fill:'#2a2a2a', 'data-c':c }, g));
+}
+function crearSemPeat(g){
+  svgEl('rect', { x:0, y:0, width:20, height:36, rx:5, fill:'#111', stroke:'#444' }, g);
+  return ['#ff4757','#22e07a'].map((c, i) => svgEl('circle', { cx:10, cy:9 + i * 18, r:6, fill:'#2a2a2a', 'data-c':c }, g));
+}
+const semA = [crearSemAuto($('semA1')), crearSemAuto($('semA2'))];
+const semP = [crearSemPeat($('semP1')), crearSemPeat($('semP2'))];
+let alertaHasta = 0;
+
+function luz(el, on){ el.setAttribute('fill', on ? el.dataset.c : '#2a2a2a'); el.style.filter = on ? 'drop-shadow(0 0 4px ' + el.dataset.c + ')' : ''; }
+function pintar(){
+  // chips
+  $('cFase').textContent = FASES[S.fase] || '—';
+  $('cP').textContent = (S.dP >= 300 ? '—' : S.dP + ' cm') + (S.peaton ? ' ✔' : '');
+  $('cP').className = S.peaton ? 'si' : '';
+  $('cV').textContent = (S.dV >= 300 ? '—' : S.dV + ' cm') + (S.vehiculo ? ' ✔' : '');
+  $('cV').className = S.vehiculo ? 'si' : '';
+  $('cVel').textContent = S.vel + ' cm/s';
+  $('cCr').textContent = S.cruces;
+  // hardware
+  $('lAR').classList.toggle('on', !!S.aR); $('lAA').classList.toggle('on', !!S.aA); $('lAV').classList.toggle('on', !!S.aV);
+  $('lPR').classList.toggle('on', !!S.pR); $('lPV').classList.toggle('on', !!S.pV);
+  semA.forEach(s => { luz(s[0], S.aR); luz(s[1], S.aA); luz(s[2], S.aV); });
+  semP.forEach(s => { luz(s[0], S.pR); luz(s[1], S.pV); });
+  const b = S.cuenta >= 0 && S.cuenta <= 9 ? DIGITOS[S.cuenta] : (S.cuenta === -2 ? 0x40 : 0);
+  [segHW, segEsc].forEach(arr => arr.forEach((r, i) => { const on = (b >> i) & 1; r.setAttribute('fill', on ? '#ff3030' : '#2a0b0b'); r.style.filter = on ? 'drop-shadow(0 0 3px #ff3030)' : ''; }));
+  const l1 = (S.lcd[0] || '').padEnd(16).slice(0, 16), l2 = (S.lcd[1] || '').padEnd(16).slice(0, 16);
+  $('lcd').textContent = l1 + '\n' + l2;
+  $('lcd').classList.toggle('apagada', !S.lcdOk);
+  $('lcdE1').textContent = l1; $('lcdE2').textContent = l2;
+  const g = glifo();
+  for (let k = 0; k < 64; k++) {
+    const on = (g[k >> 3] >> (7 - (k & 7))) & 1;
+    mxEl.children[k].classList.toggle('on', !!on);
+    mxEsc.children[k].setAttribute('fill', on ? '#ff3b3b' : '#2a0b0b');
+  }
+  $('alerta').setAttribute('opacity', Date.now() < alertaHasta ? ((Date.now() / 250 | 0) % 2 ? 1 : .35) : 0);
+  $('hazP').setAttribute('opacity', S.peaton ? .95 : .4);
+  $('hazV').setAttribute('opacity', S.vehiculo ? .95 : .4);
+  $('tUP').textContent = S.umbP; $('tUV').textContent = S.umbV;
+  if (document.activeElement !== $('rUP')) $('rUP').value = S.umbP;
+  if (document.activeElement !== $('rUV')) $('rUV').value = S.umbV;
+  $('bMant').textContent = S.fase === 6 ? 'Salir de mantenimiento' : 'Mantenimiento';
+  $('bSil').textContent = S.sil ? 'Activar buzzer' : 'Silenciar buzzer';
+  const m = $('modo');
+  if (S.modo === 'real') {
+    const viejo = Date.now() - S.vivo > 3000;
+    m.className = 'modo real'; m.textContent = viejo ? 'Conectado · sin datos' : 'Arduino real';
+  } else { m.className = 'modo'; m.textContent = 'Simulación'; }
+}
+
+/* =====================================================================
+   ARDUINO VIRTUAL: la misma lógica que smart_vial.ino
+   ===================================================================== */
+const T = { VERDE_MIN:6000, AMARILLO:2500, TODO_ROJO:1000, ESPERA_MAX:8000, FIN:1500, VEL_ALERTA:25 };
+const VA = {
+  fase:0, tFase:0, dP:300, dV:300, cP:0, cV:0, peaton:false, vehiculo:false, pedido:false,
+  cuenta:-1, vel:0, dVant:-1, tVant:0, cruces:0, sil:false, alarma:false, umbP:20, umbV:15,
+  turno:false, listo:false, tSensor:0, tSt:0, l1:null, l2:null, luces:[0,0,1,1,0],
+  ev(t){ procesar('EV,' + t); },
+  pitar(v, on, off){ if (!this.sil) procesar('BZ,' + v + ',' + on + ',' + off); },
+  pantalla(a, b){ if (a === this.l1 && b === this.l2) return; this.l1 = a; this.l2 = b; procesar('LC,' + a + ',' + b); },
+  set(aR, aA, aV, pR, pV){ this.luces = [aR, aA, aV, pR, pV]; },
+  cambiar(f){
+    this.fase = f; this.tFase = Date.now();
+    switch (f) {
+      case 0: this.set(0,0,1,1,0); this.cuenta = -1; this.ev('Autos en verde'); break;
+      case 1: this.ev('Peaton espera: hay un vehiculo en el cruce'); break;
+      case 2: this.set(0,1,0,1,0); this.ev('Autos en amarillo'); this.pitar(1,150,0); break;
+      case 3: this.set(1,0,0,1,0); this.ev('Autos en rojo'); break;
+      case 4: this.set(1,0,0,0,1); this.cuenta = 9; this.alarma = false; this.cruces++; this.ev('PUEDE CRUZAR (cruce #' + this.cruces + ')'); this.pitar(1,120,0); break;
+      case 5: this.set(1,0,0,1,0); this.cuenta = -1; this.pedido = false; this.ev('Fin del cruce'); this.pitar(2,90,90); break;
+      case 6: this.set(0,0,0,0,0); this.cuenta = -2; this.pedido = false; this.ev('Modo intermitente (mantenimiento)'); break;
+    }
+    this.estado();
+  },
+  sensores(){
+    this.turno = !this.turno;
+    if (this.turno) {
+      this.dP = Math.round(Mundo.distPeaton());
+      if (this.dP <= this.umbP) { if (this.cP < 5) this.cP++; } else if (this.cP > 0) this.cP--;
+      const antes = this.peaton;
+      if (this.cP >= 3) this.peaton = true; else if (this.cP === 0) this.peaton = false;
+      if (this.peaton && !antes) {
+        this.ev('Peaton detectado a ' + this.dP + ' cm');
+      }
+    } else {
+      this.dV = Math.round(Mundo.distVehiculo());
+      const ahora = Date.now();
+      if (this.dV < 300 && this.dVant >= 0 && this.dVant < 300 && ahora > this.tVant) {
+        let v = (this.dVant - this.dV) * 1000 / (ahora - this.tVant);
+        v = Math.max(0, Math.min(300, v));
+        this.vel = this.vel * .6 + v * .4;
+      } else if (this.dV >= 300) this.vel = 0;
+      this.dVant = this.dV; this.tVant = ahora;
+      if (this.dV <= this.umbV) { if (this.cV < 4) this.cV++; } else if (this.cV > 0) this.cV--;
+      const antes = this.vehiculo;
+      if (this.cV >= 2) this.vehiculo = true; else if (this.cV === 0) this.vehiculo = false;
+      if (this.vehiculo && !antes) this.ev('Vehiculo detectado a ' + this.dV + ' cm');
+      if (!this.vehiculo && antes) this.ev('El vehiculo ya paso');
+    }
+  },
+  fases(){
+    const t = Date.now() - this.tFase;
+    switch (this.fase) {
+      case 0:
+        if (this.peaton && !this.pedido) { this.pedido = true; this.ev('Peaton pide paso'); this.pitar(1,60,0); }
+        if (this.pedido && t >= T.VERDE_MIN) { this.cambiar(this.vehiculo ? 1 : 2); break; }
+        this.pantalla('  SMART VIAL', this.pedido ? 'Peaton: ESPERE' : 'Autos: SIGA'); break;
+      case 1:
+        this.pantalla('VEHICULO CERCA', 'Peaton: ESPERE');
+        if (!this.vehiculo || t >= T.ESPERA_MAX) this.cambiar(2); break;
+      case 2:
+        this.pantalla('AUTOS: CUIDADO', 'Peaton: ESPERE');
+        if (t >= T.AMARILLO) this.cambiar(3); break;
+      case 3:
+        this.pantalla('AUTOS: ALTO', 'Peaton: LISTO');
+        if (t >= T.TODO_ROJO) this.cambiar(4); break;
+      case 4: {
+        const n = 9 - Math.floor(t / 1000);
+        if (n < 0) { this.cambiar(5); break; }
+        if (n !== this.cuenta) { this.cuenta = n; if (n <= 3) this.pitar(2,60,60); else this.pitar(1,60,0); }
+        this.luces[4] = (n <= 3 && (t % 500) >= 250) ? 0 : 1;
+        const l1 = 'PUEDE CRUZAR ' + n + 's';
+        if (this.vehiculo && this.vel > T.VEL_ALERTA) {
+          this.pantalla(l1, '!AUTO NO FRENA!');
+          if (!this.alarma) { this.alarma = true; this.ev('ALERTA: vehiculo acercandose con luz roja'); this.pitar(3,80,50); }
+        } else this.pantalla(l1, n <= 3 ? 'Apurese...' : 'Autos: ALTO');
+        break; }
+      case 5:
+        this.pantalla('NO CRUCE', 'Autos: SIGAN');
+        if (t >= T.FIN) this.cambiar(0); break;
+      case 6: {
+        const on = (t % 1000) < 500 ? 1 : 0;
+        this.luces = [0, on, 0, on, 0];
+        this.pantalla('MANTENIMIENTO', 'Cruce con cuidado'); break; }
+    }
+  },
+  estado(){
+    const [aR, aA, aV, pR, pV] = this.luces;
+    procesar(['ST', this.fase, aR, aA, aV, pR, pV, this.cuenta, this.dP, this.dV, Math.round(this.vel), +this.peaton, +this.vehiculo, +this.pedido, this.cruces, +this.sil, this.umbP, this.umbV, 1].join(','));
+  },
+  comando(c){
+    c = c.trim().toUpperCase();
+    if (c === 'ESTADO') this.l1 = null;
+    else if (c === 'PEATON') {
+      if (this.fase === 0 || this.fase === 1) { this.pedido = true; this.ev('Boton de peaton (app)'); this.pitar(1,60,0); }
+      else this.ev('El cruce ya esta en curso');
+    }
+    else if (c === 'MANT:1') this.cambiar(6);
+    else if (c === 'MANT:0') { if (this.fase === 6) this.cambiar(0); }
+    else if (c === 'SILENCIO:1') { this.sil = true; this.ev('Buzzer silenciado'); }
+    else if (c === 'SILENCIO:0') { this.sil = false; this.ev('Buzzer activado'); }
+    else if (c.startsWith('UMBRAL_P:')) { this.umbP = Math.max(3, Math.min(200, parseInt(c.slice(9)) || 20)); this.ev('Umbral peaton = ' + this.umbP + ' cm'); }
+    else if (c.startsWith('UMBRAL_V:')) { this.umbV = Math.max(3, Math.min(200, parseInt(c.slice(9)) || 15)); this.ev('Umbral vehiculo = ' + this.umbV + ' cm'); }
+    else if (c) this.ev('Comando desconocido: ' + c);
+    this.estado();
+  },
+  iniciar(){
+    this.pantalla('  SMART VIAL', 'Transito intelig');
+    this.set(1,1,1,1,1); this.cuenta = 8; this.estado();
+    setTimeout(() => { this.ev('LCD encontrada'); this.listo = true; this.cambiar(0); }, 1200);
+  },
+  tick(){
+    const ahora = Date.now();
+    if (this.fase !== undefined && ahora - this.tSensor >= 60) { this.tSensor = ahora; this.sensores(); }
+    if (this.listo) this.fases();
+    this.estado();
+  }
+};
+
+/* =====================================================================
+   MUNDO: autos y peatones de la simulación
+   1 px de la escena = 0,25 cm del sensor de vehículos / 0,5 cm del de peatones
+   ===================================================================== */
+const STOP = 395;                 // frente del auto al llegar a la línea de pare
+const autos = [], peatones = [];
+const gAutos = $('autos'), gPeat = $('peatones');
+const COLORES = ['#e53935','#1e88e5','#fdd835','#8e24aa','#43a047','#fb8c00','#eceff1','#00acc1'];
+const Mundo = {
+  distVehiculo(){
+    // sensor en x=398 mirando a la izquierda, solo carril 1
+    let d = 300;
+    for (const a of autos) if (a.carril === 0 && a.s <= 398 && a.s > -900) d = Math.min(d, (398 - a.s) / 4);
+    return d;
+  },
+  distPeaton(){
+    // sensor en x=442 mirando a la derecha, en la acera de arriba
+    let d = 300;
+    for (const p of peatones) if ((p.est === 'llega' || p.est === 'espera') && p.x >= 446 && p.x < 1050) d = Math.min(d, (p.x - 446) / 2);
+    return d;
+  },
+  hayPeatonEnCebra(){ return peatones.some(p => p.est === 'cruza'); }
+};
+function nuevoAuto(infractor, carril){
+  if (carril === undefined) carril = Math.random() < .55 ? 0 : 1;
+  const mismo = autos.filter(a => a.carril === carril);
+  const ultimo = mismo.length ? Math.min(...mismo.map(a => a.s)) : 999;
+  if (ultimo < 20 && !infractor) return;
+  const g = svgEl('g', {}, gAutos);
+  const col = infractor ? '#d50000' : COLORES[Math.random() * COLORES.length | 0];
+  svgEl('rect', { x:-70, y:-17, width:70, height:34, rx:9, fill:col, stroke:'#00000055' }, g);
+  svgEl('rect', { x:-50, y:-13, width:16, height:26, rx:4, fill:'#1b2633' }, g);
+  svgEl('rect', { x:-24, y:-13, width:12, height:26, rx:4, fill:'#1b2633' }, g);
+  svgEl('rect', { x:-4, y:-14, width:4, height:7, rx:1, fill:'#fff6c2' }, g);
+  svgEl('rect', { x:-4, y:7, width:4, height:7, rx:1, fill:'#fff6c2' }, g);
+  if (infractor) svgEl('rect', { x:-44, y:-4, width:18, height:8, rx:2, fill:'#fff' }, g);
+  const a = { g, carril, s: Math.min(-90, ultimo - 110), v: infractor ? 230 : 120, vmax: infractor ? 240 : 115 + Math.random() * 25, infractor };
+  autos.push(a); colocar(a);
+  return a;
+}
+function colocar(a){
+  if (a.carril === 0) a.g.setAttribute('transform', `translate(${a.s.toFixed(1)} 223)`);
+  else a.g.setAttribute('transform', `translate(${(900 - a.s).toFixed(1)} 297) rotate(180)`);
+}
+function nuevoPeaton(){
+  const esperando = peatones.filter(p => p.est === 'llega' || p.est === 'espera').length;
+  if (esperando >= 4) return;
+  const g = svgEl('g', {}, gPeat);
+  const ropa = ['#ff7043','#42a5f5','#ab47bc','#26a69a','#ffca28','#ec407a'][Math.random() * 6 | 0];
+  svgEl('ellipse', { cx:0, cy:0, rx:9, ry:6, fill:ropa, stroke:'#00000066' }, g);
+  svgEl('circle', { cx:0, cy:0, r:4.5, fill:'#5d4037' }, g);
+  const p = { g, x:930, y:150 + (Math.random() * 10 - 5), est:'llega', fila:esperando, cx:430 + Math.random() * 40, vel:55 + Math.random() * 20, sale: Math.random() < .5 ? -1 : 1 };
+  peatones.push(p); dibujarP(p);
+}
+function dibujarP(p){ p.g.setAttribute('transform', `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`); }
+
+let tPrev = performance.now(), tAuto = 0, tPeat = 4000;
+function paso(ahora){
+  const dt = Math.min(.05, (ahora - tPrev) / 1000); tPrev = ahora;
+  if (S.modo === 'sim') {
+    // ---- tráfico automático ----
+    if ($('chkTrafico').checked) {
+      tAuto -= dt * 1000; tPeat -= dt * 1000;
+      if (tAuto <= 0) { nuevoAuto(false); tAuto = 2500 + Math.random() * 3500; }
+      if (tPeat <= 0) { nuevoPeaton(); tPeat = 11000 + Math.random() * 9000; }
+    }
+    // ---- autos ----
+    const verde = !!S.aV, amarillo = !!S.aA;
+    for (const a of [...autos]) {
+      const delante = autos.filter(b => b !== a && b.carril === a.carril && b.s > a.s);
+      let objetivo = a.vmax;
+      const aLinea = STOP - a.s;
+      const pare = !verde || Mundo.hayPeatonEnCebra();
+      if (pare && aLinea > -2) {
+        if (a.infractor) { if (aLinea < 40) objetivo = 0; }
+        else if (!(amarillo && aLinea < 25 && !Mundo.hayPeatonEnCebra())) objetivo = Math.min(objetivo, Math.max(0, aLinea * 1.0));
+      }
+      if (delante.length) {
+        const cola = Math.min(...delante.map(b => b.s)) - 70;
+        objetivo = Math.min(objetivo, Math.max(0, (cola - 18 - a.s) * 2));
+      }
+      const fren = a.infractor && objetivo === 0 ? 1600 : 420;
+      a.v += Math.max(-fren * dt, Math.min(160 * dt, objetivo - a.v));
+      if (a.v < 0) a.v = 0;
+      a.s += a.v * dt;
+      if (a.infractor && a.v < 5 && verde) { a.infractor = false; a.vmax = 130; }
+      colocar(a);
+      if (a.s > 1000) { a.g.remove(); autos.splice(autos.indexOf(a), 1); }
+    }
+    // ---- peatones ----
+    const filaEspera = peatones.filter(p => p.est === 'llega' || p.est === 'espera');
+    filaEspera.sort((p, q) => p.x - q.x).forEach((p, i) => p.fila = i);
+    for (const p of [...peatones]) {
+      if (p.est === 'llega' || p.est === 'espera') {
+        const meta = 462 + p.fila * 16;
+        if (p.x > meta) { p.x = Math.max(meta, p.x - p.vel * dt); p.est = 'llega'; }
+        else p.est = 'espera';
+        if (p.est === 'espera' && S.pV && S.fase === 4 && S.cuenta >= 4) { p.est = 'cruza'; }
+      } else if (p.est === 'cruza') {
+        if (Math.abs(p.x - p.cx) > 1) p.x += Math.sign(p.cx - p.x) * Math.min(Math.abs(p.cx - p.x), 80 * dt);
+        p.y += 70 * dt;
+        if (p.y >= 368) { p.y = 368; p.est = 'sale'; }
+      } else if (p.est === 'sale') {
+        p.x += p.sale * 60 * dt;
+        if (p.x < -20 || p.x > 920) { p.g.remove(); peatones.splice(peatones.indexOf(p), 1); continue; }
+      }
+      dibujarP(p);
+    }
+  }
+  if (Date.now() < alertaHasta || S.fase === 4) pintar();
+  requestAnimationFrame(paso);
+}
+requestAnimationFrame(paso);
+setInterval(() => { if (S.modo === 'sim') VA.tick(); }, 30);
+
+$('bPeaton').onclick = () => nuevoPeaton();
+$('bAuto').onclick = () => nuevoAuto(false);
+$('bInfractor').onclick = () => {
+  if (S.fase !== 4) { log('Tip: el auto que no frena se nota cuando el peatón está cruzando. Llega un peatón primero.'); }
+  nuevoAuto(true, 0);
+};
+$('bBoton').onclick = () => mandar('PEATON');
+$('bMant').onclick = () => mandar(S.fase === 6 ? 'MANT:0' : 'MANT:1');
+$('bSil').onclick = () => mandar(S.sil ? 'SILENCIO:0' : 'SILENCIO:1');
+$('rUP').oninput = () => $('tUP').textContent = $('rUP').value;
+$('rUV').oninput = () => $('tUV').textContent = $('rUV').value;
+$('rUP').onchange = () => mandar('UMBRAL_P:' + $('rUP').value);
+$('rUV').onchange = () => mandar('UMBRAL_V:' + $('rUV').value);
+
+/* ---------- conexión real: HC-05 o USB (Web Serial) ---------- */
+const SPP = '00001101-0000-1000-8000-00805f9b34fb';
+const haySerial = 'serial' in navigator;
+$('soporte').className = 'aviso ' + (haySerial ? 'bien' : 'malo');
+$('soporte').innerHTML = haySerial
+  ? '✔ Este navegador puede conectarse al Arduino por USB o por el HC-05.'
+  : '✖ Este navegador no permite conectar. Usa <b>Google Chrome</b> en la computadora o en Android (el iPhone no lo permite). La simulación sí funciona aquí.';
+$('bBt').disabled = $('bUsb').disabled = !haySerial;
+let puerto = null, lector = null, escritor = null, buffer = '';
+const enc = new TextEncoder();
+async function enviarReal(t){
+  try { if (escritor) await escritor.write(enc.encode(t + '\n')); }
+  catch { log('No se pudo enviar "' + esc(t) + '"', true); }
+}
+function recibir(t){
+  buffer += t; let i;
+  while ((i = buffer.search(/[\r\n]/)) >= 0) { const l = buffer.slice(0, i).trim(); buffer = buffer.slice(i + 1); if (l) procesar(l); }
+  if (buffer.length > 300) buffer = '';
+}
+function limpiarMundo(){
+  autos.forEach(a => a.g.remove()); autos.length = 0;
+  peatones.forEach(p => p.g.remove()); peatones.length = 0;
+}
+async function conectar(bt){
+  try {
+    let pt;
+    if (bt) {
+      try { pt = await navigator.serial.requestPort({ allowedBluetoothServiceClassIds:[SPP], filters:[{ bluetoothServiceClassId:SPP }] }); }
+      catch (e) { if (e.name === 'NotFoundError') throw e; pt = await navigator.serial.requestPort(); }
+    } else pt = await navigator.serial.requestPort();
+    await pt.open({ baudRate:9600 });
+    puerto = pt; escritor = pt.writable.getWriter();
+    limpiarMundo();
+    S.modo = 'real'; S.vivo = Date.now();
+    $('ctrlSim').hidden = true; $('bDesc').disabled = false;
+    log('Conectado a <b>' + (bt ? 'HC-05' : 'Arduino por USB') + '</b>');
+    setTimeout(() => enviarReal('ESTADO'), 1500);
+    setTimeout(() => enviarReal('ESTADO'), 2500);
+    leerSerial(); pintar();
+  } catch (e) {
+    if (e.name === 'NotFoundError') log('No se eligió ningún equipo. ¿Está emparejado el HC-05?', true);
+    else log('No se pudo conectar: ' + esc(e.message || e), true);
+  }
+}
+async function leerSerial(){
+  const dec = new TextDecoder();
+  while (puerto && puerto.readable) {
+    lector = puerto.readable.getReader();
+    try { for (;;) { const { value, done } = await lector.read(); if (done) break; recibir(dec.decode(value, { stream:true })); } }
+    catch { log('Se perdió la conexión', true); break; }
+    finally { try { lector.releaseLock(); } catch {} }
+  }
+}
+async function desconectar(){
+  try { if (lector) await lector.cancel(); } catch {}
+  try { if (escritor) escritor.releaseLock(); } catch {}
+  try { if (puerto) await puerto.close(); } catch {}
+  puerto = lector = escritor = null;
+  S.modo = 'sim'; S.vivo = Date.now(); VA.l1 = null;
+  $('ctrlSim').hidden = false; $('bDesc').disabled = true;
+  log('Desconectado. De vuelta a la simulación');
+  pintar();
+}
+$('bBt').onclick = () => conectar(true);
+$('bUsb').onclick = () => conectar(false);
+$('bDesc').onclick = desconectar;
+setInterval(pintar, 1000);
+
+/* ---------- código ---------- */
+let codigo = '';
+fetch('smart_vial.ino').then(r => r.ok ? r.text() : Promise.reject()).then(t => { codigo = t; $('codigo').textContent = t; }).catch(() => { $('codigo').textContent = 'No se pudo cargar. Usa el botón Descargar.'; });
+$('bCopiar').onclick = async () => { try { await navigator.clipboard.writeText(codigo); $('bCopiar').textContent = '¡Copiado!'; } catch { $('bCopiar').textContent = 'Selecciona y copia'; } setTimeout(() => $('bCopiar').textContent = 'Copiar código', 1800); };
+
+log('SMART VIAL listo (simulación). Pulsa <b>Llega un peatón</b> para probar.');
+VA.iniciar();
+pintar();
+</script>
+</body>
+</html>
