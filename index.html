@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SMART VIAL · Tránsito inteligente</title>
-<meta name="description" content="Simulador de SMART VIAL: semáforo inteligente con cruce peatonal, Arduino UNO, sensores ultrasónicos, módulos de semáforo LED, LCD, matriz 8x8 y buzzer.">
+<meta name="description" content="Simulador de SMART VIAL: semáforo inteligente con cruce peatonal, Arduino UNO, sensores ultrasónicos, módulo de semáforo LED, LCD, matriz 8x8 y buzzer.">
 <meta name="theme-color" content="#06101c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Ccircle cx='32' cy='16' r='9' fill='%23ff4757'/%3E%3Ccircle cx='32' cy='35' r='9' fill='%23ffb020'/%3E%3Ccircle cx='32' cy='54' r='7' fill='%2322e07a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -210,15 +210,14 @@ ul.lista li{margin:4px 0}
             <i class="r" id="lAR"></i><i class="a" id="lAA"></i><i class="v" id="lAV"></i>
             <div class="pines"><b>R</b><b>Y</b><b>G</b><b>−</b></div><span>AUTOS</span>
           </div>
-          <div class="sem mod" aria-label="Módulo de semáforo de peatones">
+          <div class="sem" aria-label="Semáforo de peatones (LEDs)">
             <i class="r" id="lPR"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="12" cy="4" r="2.6"/><path d="M8.5 8h7l-.8 7h-1.5l-.4 7h-1.6l-.4-7H9.3z"/></g></svg></i>
-            <i class="a" id="lPA"></i>
             <i class="v" id="lPV"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="13" cy="3.6" r="2.4"/><path d="M11 7.5l3 .5 2.5 4-1.4.9-1.8-2.6-.8 3.7 2.5 3-.4 5h-1.8l.2-4.2-2.6-2.6-1.5 3.6-3.4 3.1-1.2-1.3 3-2.8z"/></g></svg></i>
-            <div class="pines"><b>R</b><b>Y</b><b>G</b><b>−</b></div><span>PEATÓN</span>
+            <span>PEATÓN</span>
           </div>
           <div>
             <div class="buz" id="buz"><i></i> Buzzer</div>
-            <p class="nota" style="margin:8px 0 0">2 módulos de semáforo LED. En el del peatón el amarillo no se usa.</p>
+            <p class="nota" style="margin:8px 0 0">Autos: módulo de semáforo LED. Peatón: 2 LEDs (rojo y verde).</p>
           </div>
         </div>
         <div class="lcd" id="lcd"></div>
@@ -264,9 +263,8 @@ ul.lista li{margin:4px 0}
         <tr><td><span class="pin">D4</span></td><td>TRIG ultrasónico <b>vehículo</b></td></tr>
         <tr><td><span class="pin">D5</span></td><td>ECHO ultrasónico <b>vehículo</b></td></tr>
         <tr><td><span class="pin">D6</span></td><td>Buzzer (+). El (−) a GND</td></tr>
-        <tr><td><span class="pin">D7</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--rojo)">R</b></td></tr>
-        <tr><td><span class="pin">D8</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--ambar)">Y</b> (no se usa, queda apagado)</td></tr>
-        <tr><td><span class="pin">D9</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--verde)">G</b></td></tr>
+        <tr><td><span class="pin">D7</span></td><td>LED <b style="color:var(--rojo)">rojo peatón</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">D8</span></td><td>LED <b style="color:var(--verde)">verde peatón</b> + 220 Ω</td></tr>
         <tr><td><span class="pin">D10</span></td><td>Matriz MAX7219 <b>CS</b></td></tr>
         <tr><td><span class="pin">D11</span></td><td>Matriz MAX7219 <b>DIN</b></td></tr>
         <tr><td><span class="pin">D13</span></td><td>Matriz MAX7219 <b>CLK</b></td></tr>
@@ -276,7 +274,7 @@ ul.lista li{margin:4px 0}
         <tr><td><span class="pin">A4</span></td><td>SDA de la LCD I2C</td></tr>
         <tr><td><span class="pin">A5</span></td><td>SCL de la LCD I2C</td></tr>
       </table>
-      <p class="nota">Los módulos de semáforo ya traen sus resistencias: se conectan <b>directo</b>, sin resistencias. El pin <b>GND</b> (o "−") de cada módulo va a GND del Arduino. Quedan libres D12 y A3.</p>
+      <p class="nota">El módulo de semáforo de autos ya trae sus resistencias: se conecta <b>directo</b> y su pin <b>GND</b> (o "−") va a GND del Arduino. Los LEDs del peatón: pata larga (+) al pin con su resistencia de 220 Ω y pata corta (−) a GND. Quedan libres D9, D12 y A3.</p>
     </div>
     <div class="col">
       <div class="card">
@@ -286,8 +284,8 @@ ul.lista li{margin:4px 0}
           <tr><td>2 × HC-SR04</td><td>VCC → 5V · GND → GND · TRIG/ECHO como la tabla. El de <b>peatón</b> en la acera mirando hacia donde se para la persona; el de <b>vehículo</b> en la orilla de la calle, mirando hacia los autos que llegan.</td></tr>
           <tr><td>LCD 16x2 I2C</td><td>VCC → 5V · GND → GND · SDA → A4 · SCL → A5. Si no se ven letras, giren el tornillo azul de atrás (contraste).</td></tr>
           <tr><td>Matriz 8x8 MAX7219</td><td>VCC → 5V · GND → GND · DIN → D11 · CS → D10 · CLK → D13 (lado de entrada, el de "DIN").</td></tr>
-          <tr><td>Módulo semáforo <b>autos</b></td><td>R → A0 · Y → A1 · G → A2 · GND → GND</td></tr>
-          <tr><td>Módulo semáforo <b>peatón</b></td><td>R → D7 · Y → D8 (no se usa) · G → D9 · GND → GND. Si los módulos prenden al revés (todo encendido cuando debería estar apagado), en el código pongan <code>SEMAFORO_INVERTIDO = true</code>.</td></tr>
+          <tr><td>Módulo semáforo <b>autos</b></td><td>R → A0 · Y → A1 · G → A2 · GND → GND. Si prende al revés (encendido cuando debería estar apagado), en el código pongan <code>SEMAFORO_INVERTIDO = true</code>.</td></tr>
+          <tr><td>LEDs del <b>peatón</b></td><td>Rojo → D7 · Verde → D8, cada uno con su resistencia de 220 Ω. Pata corta a GND.</td></tr>
           <tr><td>Buzzer</td><td>(+) → D6 · (−) → GND</td></tr>
           <tr><td>HC-05</td><td>VCC → 5V · GND → GND · TXD → D0 · RXD ← D1 con divisor: D1 → 1 kΩ → RXD → 2 kΩ → GND (o con 220 Ω: 1 de arriba y 2 en serie abajo).</td></tr>
         </table>
@@ -298,7 +296,7 @@ ul.lista li{margin:4px 0}
           <li>En el Arduino IDE instalen la librería <b>LiquidCrystal I2C</b> (Frank de Brabander).</li>
           <li>Placa: <b>Arduino UNO</b>.</li>
           <li><b>Quiten el cable de D0</b> mientras suben el programa. Después lo vuelven a poner.</li>
-          <li>Al encender, todas las luces de los 2 módulos prenden 1 segundo: así comprueban que están bien conectados.</li>
+          <li>Al encender, todas las luces (módulo y LEDs) prenden 1 segundo: así comprueban que están bien conectadas.</li>
           <li>Si el muñeco de la matriz sale al revés: <code>ESPEJO_MATRIZ = true</code>.</li>
         </ul>
       </div>
@@ -307,7 +305,8 @@ ul.lista li{margin:4px 0}
         <ul class="lista">
           <li>Arduino UNO + cable USB</li>
           <li>2 sensores ultrasónicos HC-SR04</li>
-          <li>2 módulos de semáforo LED (R, Y, G, GND)</li>
+          <li>1 módulo de semáforo LED (R, Y, G, GND) para los autos</li>
+          <li>LEDs para el peatón: 1 rojo y 1 verde + 2 resistencias de 220 Ω</li>
           <li>LCD 16x2 con módulo I2C</li>
           <li>Matriz 8x8 con MAX7219</li>
           <li>Buzzer</li>
@@ -376,7 +375,7 @@ ul.lista li{margin:4px 0}
       <h3>¿Cómo funciona Smart Vial?</h3>
       <ul class="lista">
         <li><b>Sensor ultrasónico:</b> detecta cuando un peatón se acerca al cruce y envía una señal al Arduino.</li>
-        <li><b>Módulos de semáforo LED:</b> al detectar al peatón, el Arduino activa la luz roja para los vehículos y la verde para los peatones, permitiendo el cruce seguro.</li>
+        <li><b>Módulo de semáforo y LEDs:</b> al detectar al peatón, el Arduino activa la luz roja para los vehículos y la verde para los peatones, permitiendo el cruce seguro.</li>
         <li><b>Sensor de vehículos:</b> detecta cuando hay un automóvil cerca del cruce y calcula a qué velocidad se acerca.</li>
         <li><b>LCD:</b> indica "PUEDE CRUZAR" con la cuenta de 9 a 0, "ESPERE" o la alerta.</li>
         <li><b>Matriz 8x8:</b> muestra al muñeco parado o caminando.</li>
@@ -517,7 +516,7 @@ function crearSemPeat(g){
 }
 const semA = [crearSemAuto($('semA1')), crearSemAuto($('semA2'))];
 const semP = [crearSemPeat($('semP1')), crearSemPeat($('semP2'))];
-let alertaHasta = 0, pruebaHasta = Date.now() + 1200;
+let alertaHasta = 0;
 
 function luz(el, on){ el.setAttribute('fill', on ? el.dataset.c : '#2a2a2a'); el.style.filter = on ? 'drop-shadow(0 0 4px ' + el.dataset.c + ')' : ''; }
 function pintar(){
@@ -534,7 +533,6 @@ function pintar(){
   $('lPR').classList.toggle('on', !!S.pR); $('lPV').classList.toggle('on', !!S.pV);
   semA.forEach(s => { luz(s[0], S.aR); luz(s[1], S.aA); luz(s[2], S.aV); });
   semP.forEach(s => { luz(s[0], S.pR); luz(s[1], S.pV); });
-  $('lPA').classList.toggle('on', S.fase !== 6 && Date.now() < pruebaHasta);
   const l1 = (S.lcd[0] || '').padEnd(16).slice(0, 16), l2 = (S.lcd[1] || '').padEnd(16).slice(0, 16);
   $('lcd').textContent = l1 + '\n' + l2;
   $('lcd').classList.toggle('apagada', !S.lcdOk);

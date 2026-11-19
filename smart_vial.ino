@@ -4,7 +4,8 @@
 
   - Ultrasonico 1 (peaton): detecta a la persona que llega al cruce.
   - Ultrasonico 2 (vehiculo): detecta el auto que se acerca y calcula su velocidad.
-  - 2 modulos de semaforo LED (R, Y, G, GND): uno para autos y uno para peatones.
+  - Modulo de semaforo LED (R, Y, G, GND) para autos.
+  - Semaforo de peaton con 2 LEDs (rojo y verde).
   - LCD 16x2 I2C: "PUEDE CRUZAR 9s" (cuenta 9 -> 0), "ESPERE", etc.
   - Matriz 8x8 MAX7219: muñeco parado / muñeco caminando.
   - Buzzer: pitidos de cruce (ayuda a personas con poca vision) y alarma.
@@ -16,14 +17,15 @@
   D2  TRIG ultrasonico peaton                     D3  ECHO ultrasonico peaton
   D4  TRIG ultrasonico vehiculo                   D5  ECHO ultrasonico vehiculo
   D6  Buzzer (+)
-  D7  Modulo semaforo PEATON  R      D8  Modulo semaforo PEATON  Y (no se usa, queda apagado)
-  D9  Modulo semaforo PEATON  G      GND del modulo peaton -> GND
+  D7  LED rojo peaton  (+ resistencia de 220 ohm)
+  D8  LED verde peaton (+ resistencia de 220 ohm)
   D10 MAX7219 CS            D11 MAX7219 DIN                     D13 MAX7219 CLK
   A0  Modulo semaforo AUTOS   R      A1  Modulo semaforo AUTOS   Y
   A2  Modulo semaforo AUTOS   G      GND del modulo autos  -> GND
   A4  SDA LCD          A5 SCL LCD
-  Los modulos de semaforo ya traen sus resistencias: se conectan directo, sin resistencias.
-  Quedan libres: D12 y A3.
+  El modulo de semaforo ya trae sus resistencias: se conecta directo.
+  Los LEDs del peaton: pata larga al pin con su resistencia de 220 ohm, pata corta a GND.
+  Quedan libres: D9, D12 y A3.
 
   IMPORTANTE: desconecta el cable de D0 (RX) mientras subes el programa.
   Libreria necesaria: LiquidCrystal I2C (Frank de Brabander).
@@ -38,10 +40,10 @@ const byte V_TRIG = 4, V_ECHO = 5;      // ultrasonico vehiculo
 const byte BUZZER = 6;
 const byte MX_CS = 10, MX_DIN = 11, MX_CLK = 13;    // MAX7219 (matriz)
 const byte LED_AUTO_R = A0, LED_AUTO_A = A1, LED_AUTO_V = A2;   // modulo semaforo autos
-const byte LED_PEAT_R = 7, LED_PEAT_A = 8, LED_PEAT_V = 9;      // modulo semaforo peaton
+const byte LED_PEAT_R = 7, LED_PEAT_V = 8;                      // LEDs del peaton
 
 // ---------- ajustes ----------
-const bool SEMAFORO_INVERTIDO = false; // true si tu modulo de semaforo prende al reves (anodo comun)
+const bool SEMAFORO_INVERTIDO = false; // true si el modulo de autos prende al reves (anodo comun)
 const bool ESPEJO_MATRIZ = false; // true si el muñeco sale al reves
 int  UMBRAL_P = 20;   // cm: a esta distancia o menos hay un peaton
 int  UMBRAL_V = 15;   // cm: a esta distancia o menos hay un vehiculo en el cruce
@@ -168,13 +170,13 @@ void leerSensores() {
   }
 }
 
-// ================== luces (modulos de semaforo) ==================
-void luz(byte pin, bool on) { digitalWrite(pin, (on != SEMAFORO_INVERTIDO) ? HIGH : LOW); }
-bool L(byte pin) { return (digitalRead(pin) == HIGH) != SEMAFORO_INVERTIDO; }
+// ================== luces (modulo de autos + LEDs del peaton) ==================
+bool esModulo(byte pin) { return pin == LED_AUTO_R || pin == LED_AUTO_A || pin == LED_AUTO_V; }
+void luz(byte pin, bool on) { digitalWrite(pin, (on != (SEMAFORO_INVERTIDO && esModulo(pin))) ? HIGH : LOW); }
+bool L(byte pin) { return (digitalRead(pin) == HIGH) != (SEMAFORO_INVERTIDO && esModulo(pin)); }
 void luces(bool aR, bool aA, bool aV, bool pR, bool pV) {
   luz(LED_AUTO_R, aR); luz(LED_AUTO_A, aA); luz(LED_AUTO_V, aV);
   luz(LED_PEAT_R, pR); luz(LED_PEAT_V, pV);
-  luz(LED_PEAT_A, 0);   // el amarillo del peaton no se usa
 }
 
 void evento(String t) { Serial.print(F("EV,")); Serial.println(t); }
@@ -305,7 +307,7 @@ void setup() {
   pinMode(V_TRIG, OUTPUT); pinMode(V_ECHO, INPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(LED_AUTO_R, OUTPUT); pinMode(LED_AUTO_A, OUTPUT); pinMode(LED_AUTO_V, OUTPUT);
-  pinMode(LED_PEAT_R, OUTPUT); pinMode(LED_PEAT_A, OUTPUT); pinMode(LED_PEAT_V, OUTPUT);
+  pinMode(LED_PEAT_R, OUTPUT); pinMode(LED_PEAT_V, OUTPUT);
 
   Serial.println(F("EV,Smart Vial iniciando"));
   Wire.begin();
@@ -318,7 +320,7 @@ void setup() {
   mxIniciar();
 
   // prueba de luces al encender
-  luces(1, 1, 1, 1, 1); luz(LED_PEAT_A, 1);   // prueba: prenden todas las luces de los 2 modulos
+  luces(1, 1, 1, 1, 1);   // prueba: prenden todas las luces
   pantalla("  SMART VIAL", "Transito intelig");
   pitar(1, 150, 0, 2000);
   delay(1200);
