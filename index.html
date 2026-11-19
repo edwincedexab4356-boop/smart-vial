@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SMART VIAL · Tránsito inteligente</title>
-<meta name="description" content="Simulador de SMART VIAL: semáforo inteligente con cruce peatonal, Arduino UNO, sensores ultrasónicos, display de 7 segmentos, LCD, matriz 8x8 y buzzer.">
+<meta name="description" content="Simulador de SMART VIAL: semáforo inteligente con cruce peatonal, Arduino UNO, sensores ultrasónicos, módulos de semáforo LED, LCD, matriz 8x8 y buzzer.">
 <meta name="theme-color" content="#06101c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Ccircle cx='32' cy='16' r='9' fill='%23ff4757'/%3E%3Ccircle cx='32' cy='35' r='9' fill='%23ffb020'/%3E%3Ccircle cx='32' cy='54' r='7' fill='%2322e07a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -67,7 +67,10 @@ input[type=range]{flex:1;accent-color:var(--azul)}
 .sem i.v.on{background:var(--verde);box-shadow:0 0 16px var(--verde)}
 .sem i.on svg{opacity:1}
 .sem span{font-size:10px;color:var(--mut);letter-spacing:.08em}
-.seg7{width:70px}
+.sem.mod{background:#0d4f2a;border-color:#14703c;border-radius:8px}
+.sem.mod i{background:#1c1c1c}
+.sem .pines{display:flex;gap:4px;font:9px var(--mono);color:#cde8d6}
+.sem .pines b{background:#c9a227;color:#1a1a1a;border-radius:2px;padding:0 2px}
 .lcd{background:#0f3a8c;border:6px solid #1a1f2a;border-radius:8px;padding:8px 10px;font:18px/1.25 var(--mono);color:#cfe3ff;letter-spacing:.06em;white-space:pre;box-shadow:inset 0 0 18px #00000088;text-shadow:0 0 6px #9cc4ff88;overflow:hidden;margin-top:14px}
 .lcd.apagada{background:#0b1424;color:#2a3956;text-shadow:none}
 .mxw{display:flex;gap:14px;align-items:center;margin-top:14px}
@@ -168,11 +171,6 @@ ul.lista li{margin:4px 0}
           <!-- semáforos de peatones -->
           <g id="semP1" transform="translate(486 128)"></g>
           <g id="semP2" transform="translate(396 342)"></g>
-          <!-- display 7 seg en la escena -->
-          <g transform="translate(520 52)">
-            <rect x="0" y="0" width="58" height="62" rx="8" fill="#0b0b0b" stroke="#333"/>
-            <g id="seg7esc" transform="translate(14 8) scale(.6)"></g>
-          </g>
           <!-- LCD en la escena -->
           <g transform="translate(590 52)">
             <rect x="0" y="0" width="200" height="62" rx="6" fill="#1a1f2a"/>
@@ -208,17 +206,19 @@ ul.lista li{margin:4px 0}
       <div class="card">
         <h3>Hardware</h3>
         <div class="hw">
-          <div class="sem" aria-label="Semáforo de autos">
-            <i class="r" id="lAR"></i><i class="a" id="lAA"></i><i class="v" id="lAV"></i><span>AUTOS</span>
+          <div class="sem mod" aria-label="Módulo de semáforo de autos">
+            <i class="r" id="lAR"></i><i class="a" id="lAA"></i><i class="v" id="lAV"></i>
+            <div class="pines"><b>R</b><b>Y</b><b>G</b><b>−</b></div><span>AUTOS</span>
           </div>
-          <div class="sem" aria-label="Semáforo de peatones">
+          <div class="sem mod" aria-label="Módulo de semáforo de peatones">
             <i class="r" id="lPR"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="12" cy="4" r="2.6"/><path d="M8.5 8h7l-.8 7h-1.5l-.4 7h-1.6l-.4-7H9.3z"/></g></svg></i>
+            <i class="a" id="lPA"></i>
             <i class="v" id="lPV"><svg viewBox="0 0 24 24"><g fill="#fff"><circle cx="13" cy="3.6" r="2.4"/><path d="M11 7.5l3 .5 2.5 4-1.4.9-1.8-2.6-.8 3.7 2.5 3-.4 5h-1.8l.2-4.2-2.6-2.6-1.5 3.6-3.4 3.1-1.2-1.3 3-2.8z"/></g></svg></i>
-            <span>PEATÓN</span>
+            <div class="pines"><b>R</b><b>Y</b><b>G</b><b>−</b></div><span>PEATÓN</span>
           </div>
           <div>
-            <svg class="seg7" viewBox="0 0 60 100" id="seg7hw"></svg>
-            <div class="buz" id="buz" style="margin-top:10px"><i></i> Buzzer</div>
+            <div class="buz" id="buz"><i></i> Buzzer</div>
+            <p class="nota" style="margin:8px 0 0">2 módulos de semáforo LED. En el del peatón el amarillo no se usa.</p>
           </div>
         </div>
         <div class="lcd" id="lcd"></div>
@@ -264,21 +264,19 @@ ul.lista li{margin:4px 0}
         <tr><td><span class="pin">D4</span></td><td>TRIG ultrasónico <b>vehículo</b></td></tr>
         <tr><td><span class="pin">D5</span></td><td>ECHO ultrasónico <b>vehículo</b></td></tr>
         <tr><td><span class="pin">D6</span></td><td>Buzzer (+). El (−) a GND</td></tr>
-        <tr><td><span class="pin">D7</span></td><td>74HC595 pin 14 (DS, datos) → 7 segmentos</td></tr>
-        <tr><td><span class="pin">D8</span></td><td>74HC595 pin 12 (ST_CP, latch)</td></tr>
-        <tr><td><span class="pin">D9</span></td><td>74HC595 pin 11 (SH_CP, reloj)</td></tr>
+        <tr><td><span class="pin">D7</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--rojo)">R</b></td></tr>
+        <tr><td><span class="pin">D8</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--ambar)">Y</b> (no se usa, queda apagado)</td></tr>
+        <tr><td><span class="pin">D9</span></td><td>Módulo semáforo <b>peatón</b> · pin <b style="color:var(--verde)">G</b></td></tr>
         <tr><td><span class="pin">D10</span></td><td>Matriz MAX7219 <b>CS</b></td></tr>
         <tr><td><span class="pin">D11</span></td><td>Matriz MAX7219 <b>DIN</b></td></tr>
-        <tr><td><span class="pin">D12</span></td><td>LED <b style="color:var(--verde)">verde peatón</b> + 220 Ω</td></tr>
         <tr><td><span class="pin">D13</span></td><td>Matriz MAX7219 <b>CLK</b></td></tr>
-        <tr><td><span class="pin">A0</span></td><td>LED <b style="color:var(--rojo)">rojo autos</b> + 220 Ω</td></tr>
-        <tr><td><span class="pin">A1</span></td><td>LED <b style="color:var(--ambar)">amarillo autos</b> + 220 Ω</td></tr>
-        <tr><td><span class="pin">A2</span></td><td>LED <b style="color:var(--verde)">verde autos</b> + 220 Ω</td></tr>
-        <tr><td><span class="pin">A3</span></td><td>LED <b style="color:var(--rojo)">rojo peatón</b> + 220 Ω</td></tr>
+        <tr><td><span class="pin">A0</span></td><td>Módulo semáforo <b>autos</b> · pin <b style="color:var(--rojo)">R</b></td></tr>
+        <tr><td><span class="pin">A1</span></td><td>Módulo semáforo <b>autos</b> · pin <b style="color:var(--ambar)">Y</b></td></tr>
+        <tr><td><span class="pin">A2</span></td><td>Módulo semáforo <b>autos</b> · pin <b style="color:var(--verde)">G</b></td></tr>
         <tr><td><span class="pin">A4</span></td><td>SDA de la LCD I2C</td></tr>
         <tr><td><span class="pin">A5</span></td><td>SCL de la LCD I2C</td></tr>
       </table>
-      <p class="nota">Los LEDs: pata larga (+) al pin con su resistencia de 220 Ω y pata corta (−) a GND. Para que se vean mejor en la maqueta, pueden poner 2 semáforos de autos (uno por carril) conectados en paralelo a los mismos pines, cada LED con su resistencia.</p>
+      <p class="nota">Los módulos de semáforo ya traen sus resistencias: se conectan <b>directo</b>, sin resistencias. El pin <b>GND</b> (o "−") de cada módulo va a GND del Arduino. Quedan libres D12 y A3.</p>
     </div>
     <div class="col">
       <div class="card">
@@ -288,7 +286,8 @@ ul.lista li{margin:4px 0}
           <tr><td>2 × HC-SR04</td><td>VCC → 5V · GND → GND · TRIG/ECHO como la tabla. El de <b>peatón</b> en la acera mirando hacia donde se para la persona; el de <b>vehículo</b> en la orilla de la calle, mirando hacia los autos que llegan.</td></tr>
           <tr><td>LCD 16x2 I2C</td><td>VCC → 5V · GND → GND · SDA → A4 · SCL → A5. Si no se ven letras, giren el tornillo azul de atrás (contraste).</td></tr>
           <tr><td>Matriz 8x8 MAX7219</td><td>VCC → 5V · GND → GND · DIN → D11 · CS → D10 · CLK → D13 (lado de entrada, el de "DIN").</td></tr>
-          <tr><td>Display 7 segmentos (1 dígito)</td><td>Con un <b>74HC595</b>: pin 16 y 10 → 5V · pin 8 y 13 → GND · 14 → D7 · 12 → D8 · 11 → D9.<br>Salidas a los segmentos, cada una con 220 Ω: <b>Q0 (pin 15) → a</b>, Q1 (1) → b, Q2 (2) → c, Q3 (3) → d, Q4 (4) → e, Q5 (5) → f, Q6 (6) → g. El común del display a <b>GND</b> (cátodo común). Si es ánodo común: común a 5V y en el código <code>ANODO_COMUN = true</code>.</td></tr>
+          <tr><td>Módulo semáforo <b>autos</b></td><td>R → A0 · Y → A1 · G → A2 · GND → GND</td></tr>
+          <tr><td>Módulo semáforo <b>peatón</b></td><td>R → D7 · Y → D8 (no se usa) · G → D9 · GND → GND. Si los módulos prenden al revés (todo encendido cuando debería estar apagado), en el código pongan <code>SEMAFORO_INVERTIDO = true</code>.</td></tr>
           <tr><td>Buzzer</td><td>(+) → D6 · (−) → GND</td></tr>
           <tr><td>HC-05</td><td>VCC → 5V · GND → GND · TXD → D0 · RXD ← D1 con divisor: D1 → 1 kΩ → RXD → 2 kΩ → GND (o con 220 Ω: 1 de arriba y 2 en serie abajo).</td></tr>
         </table>
@@ -299,7 +298,7 @@ ul.lista li{margin:4px 0}
           <li>En el Arduino IDE instalen la librería <b>LiquidCrystal I2C</b> (Frank de Brabander).</li>
           <li>Placa: <b>Arduino UNO</b>.</li>
           <li><b>Quiten el cable de D0</b> mientras suben el programa. Después lo vuelven a poner.</li>
-          <li>Al encender, todas las luces prenden 1 segundo y el display muestra 8: así comprueban que todo está bien conectado.</li>
+          <li>Al encender, todas las luces de los 2 módulos prenden 1 segundo: así comprueban que están bien conectados.</li>
           <li>Si el muñeco de la matriz sale al revés: <code>ESPEJO_MATRIZ = true</code>.</li>
         </ul>
       </div>
@@ -308,8 +307,7 @@ ul.lista li{margin:4px 0}
         <ul class="lista">
           <li>Arduino UNO + cable USB</li>
           <li>2 sensores ultrasónicos HC-SR04</li>
-          <li>LEDs: 2 rojos, 1 amarillo, 2 verdes (o el doble si ponen 2 semáforos) + resistencias de 220 Ω</li>
-          <li>Display de 7 segmentos de 1 dígito + 74HC595 + 7 resistencias de 220 Ω</li>
+          <li>2 módulos de semáforo LED (R, Y, G, GND)</li>
           <li>LCD 16x2 con módulo I2C</li>
           <li>Matriz 8x8 con MAX7219</li>
           <li>Buzzer</li>
@@ -330,7 +328,7 @@ ul.lista li{margin:4px 0}
       <li><b>Llega un peatón</b> (el sensor lo ve 3 veces seguidas a 20 cm o menos): pide paso. Los autos tienen al menos 6 segundos de verde.</li>
       <li>Si el sensor de vehículos ve un <b>auto en el cruce</b>, el peatón espera hasta que pase (máximo 8 segundos).</li>
       <li><b>Amarillo</b> 2,5 s → <b>rojo para todos</b> 1 s.</li>
-      <li><b>Cruce:</b> verde del peatón, el display cuenta <b>9 → 0</b>, LCD "PUEDE CRUZAR 9s", la matriz muestra el muñeco caminando y el buzzer pita cada segundo (más rápido en los últimos 3, con el verde parpadeando).</li>
+      <li><b>Cruce:</b> verde del peatón, la LCD cuenta <b>9 → 0</b> ("PUEDE CRUZAR 9s"), la matriz muestra el muñeco caminando y el buzzer pita cada segundo (más rápido en los últimos 3, con el verde parpadeando).</li>
       <li>Si durante el cruce un auto se acerca a más de 25 cm/s: <b>alerta</b> "¡AUTO NO FRENA!" con pitidos.</li>
       <li><b>Fin:</b> peatón en rojo, 1,5 s después autos en verde.</li>
     </ol>
@@ -351,7 +349,7 @@ ul.lista li{margin:4px 0}
     <h3>Lo que manda el Arduino</h3>
     <table>
       <tr><th>Línea</th><th>Significado</th></tr>
-      <tr><td><code>ST,fase,aR,aA,aV,pR,pV,cuenta,dP,dV,vel,peaton,vehiculo,pedido,cruces,silencio,umbP,umbV,lcd</code></td><td>Estado cada 0,5 s. Fase: 0 verde, 1 espera auto, 2 amarillo, 3 rojo, 4 cruce, 5 fin, 6 mantenimiento. Cuenta −1 = display apagado.</td></tr>
+      <tr><td><code>ST,fase,aR,aA,aV,pR,pV,cuenta,dP,dV,vel,peaton,vehiculo,pedido,cruces,silencio,umbP,umbV,lcd</code></td><td>Estado cada 0,5 s. Fase: 0 verde, 1 espera auto, 2 amarillo, 3 rojo, 4 cruce, 5 fin, 6 mantenimiento. Cuenta = segundos que le quedan al peatón (−1 = no hay cruce).</td></tr>
       <tr><td><code>LC,línea1,línea2</code></td><td>Texto de la LCD</td></tr>
       <tr><td><code>EV,texto</code></td><td>Evento para la bitácora</td></tr>
       <tr><td><code>BZ,veces,ms,pausa</code></td><td>El buzzer sonó</td></tr>
@@ -365,7 +363,7 @@ ul.lista li{margin:4px 0}
     <div class="fila" style="margin-bottom:10px">
       <a class="btn az" href="smart_vial.ino" download style="text-decoration:none">Descargar smart_vial.ino</a>
       <button class="btn" id="bCopiar">Copiar código</button>
-      <span class="nota">Arduino UNO · librería LiquidCrystal I2C · compila con 51 % de la memoria</span>
+      <span class="nota">Arduino UNO · librería LiquidCrystal I2C · compila con 52 % de la memoria</span>
     </div>
     <pre id="codigo">Cargando…</pre>
   </div>
@@ -378,10 +376,9 @@ ul.lista li{margin:4px 0}
       <h3>¿Cómo funciona Smart Vial?</h3>
       <ul class="lista">
         <li><b>Sensor ultrasónico:</b> detecta cuando un peatón se acerca al cruce y envía una señal al Arduino.</li>
-        <li><b>Luces LED:</b> al detectar al peatón, el Arduino activa la luz roja para los vehículos y la verde para los peatones, permitiendo el cruce seguro.</li>
+        <li><b>Módulos de semáforo LED:</b> al detectar al peatón, el Arduino activa la luz roja para los vehículos y la verde para los peatones, permitiendo el cruce seguro.</li>
         <li><b>Sensor de vehículos:</b> detecta cuando hay un automóvil cerca del cruce y calcula a qué velocidad se acerca.</li>
-        <li><b>Display de 7 segmentos:</b> cuenta de 9 a 0 el tiempo que tiene el peatón para cruzar.</li>
-        <li><b>LCD:</b> indica "PUEDE CRUZAR", "ESPERE" o la alerta.</li>
+        <li><b>LCD:</b> indica "PUEDE CRUZAR" con la cuenta de 9 a 0, "ESPERE" o la alerta.</li>
         <li><b>Matriz 8x8:</b> muestra al muñeco parado o caminando.</li>
         <li><b>Buzzer:</b> pitidos de cruce para personas con poca visión y alarma si un auto no frena.</li>
         <li><b>Arduino UNO:</b> recibe la información de los sensores y controla todo automáticamente.</li>
@@ -477,7 +474,6 @@ const M_PARADO  = [0x18,0x18,0x00,0x3C,0x5A,0x18,0x24,0x24];
 const M_CAMINA1 = [0x0C,0x0C,0x00,0x1C,0x2E,0x0C,0x14,0x22];
 const M_CAMINA2 = [0x0C,0x0C,0x00,0x1C,0x1C,0x0C,0x0C,0x14];
 const M_ALERTA  = [0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x18];
-const DIGITOS   = [0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F];
 function glifo(){
   if (S.fase === 6) return M_ALERTA;
   if (S.fase === 4) return (Math.floor(Date.now() / 300) % 2) ? M_CAMINA1 : M_CAMINA2;
@@ -488,15 +484,6 @@ for (let k = 0; k < 64; k++) {
   mxEl.appendChild(document.createElement('i'));
   svgEl('circle', { cx:(k % 8) * 7 + 4, cy:Math.floor(k / 8) * 7 + 4, r:2.7, fill:'#2a0b0b' }, mxEsc);
 }
-// 7 segmentos (a..g)
-const SEG = [
-  [10,4,40,8],[48,10,8,36],[48,54,8,36],[10,88,40,8],[4,54,8,36],[4,10,8,36],[10,46,40,8]
-];
-function crearSeg(padre){
-  return SEG.map(([x,y,w,h]) => svgEl('rect', { x, y, width:w, height:h, rx:4, fill:'#2a0b0b' }, padre));
-}
-svgEl('rect', { x:0, y:0, width:60, height:100, rx:8, fill:'#0b0b0b' }, $('seg7hw'));
-const segHW = crearSeg($('seg7hw')), segEsc = crearSeg($('seg7esc'));
 
 /* ---------- escena ---------- */
 (function decorar(){
@@ -530,7 +517,7 @@ function crearSemPeat(g){
 }
 const semA = [crearSemAuto($('semA1')), crearSemAuto($('semA2'))];
 const semP = [crearSemPeat($('semP1')), crearSemPeat($('semP2'))];
-let alertaHasta = 0;
+let alertaHasta = 0, pruebaHasta = Date.now() + 1200;
 
 function luz(el, on){ el.setAttribute('fill', on ? el.dataset.c : '#2a2a2a'); el.style.filter = on ? 'drop-shadow(0 0 4px ' + el.dataset.c + ')' : ''; }
 function pintar(){
@@ -547,8 +534,7 @@ function pintar(){
   $('lPR').classList.toggle('on', !!S.pR); $('lPV').classList.toggle('on', !!S.pV);
   semA.forEach(s => { luz(s[0], S.aR); luz(s[1], S.aA); luz(s[2], S.aV); });
   semP.forEach(s => { luz(s[0], S.pR); luz(s[1], S.pV); });
-  const b = S.cuenta >= 0 && S.cuenta <= 9 ? DIGITOS[S.cuenta] : (S.cuenta === -2 ? 0x40 : 0);
-  [segHW, segEsc].forEach(arr => arr.forEach((r, i) => { const on = (b >> i) & 1; r.setAttribute('fill', on ? '#ff3030' : '#2a0b0b'); r.style.filter = on ? 'drop-shadow(0 0 3px #ff3030)' : ''; }));
+  $('lPA').classList.toggle('on', S.fase !== 6 && Date.now() < pruebaHasta);
   const l1 = (S.lcd[0] || '').padEnd(16).slice(0, 16), l2 = (S.lcd[1] || '').padEnd(16).slice(0, 16);
   $('lcd').textContent = l1 + '\n' + l2;
   $('lcd').classList.toggle('apagada', !S.lcdOk);
@@ -595,7 +581,7 @@ const VA = {
       case 3: this.set(1,0,0,1,0); this.ev('Autos en rojo'); break;
       case 4: this.set(1,0,0,0,1); this.cuenta = 9; this.alarma = false; this.cruces++; this.ev('PUEDE CRUZAR (cruce #' + this.cruces + ')'); this.pitar(1,120,0); break;
       case 5: this.set(1,0,0,1,0); this.cuenta = -1; this.pedido = false; this.ev('Fin del cruce'); this.pitar(2,90,90); break;
-      case 6: this.set(0,0,0,0,0); this.cuenta = -2; this.pedido = false; this.ev('Modo intermitente (mantenimiento)'); break;
+      case 6: this.set(0,0,0,0,0); this.cuenta = -1; this.pedido = false; this.ev('Modo intermitente (mantenimiento)'); break;
     }
     this.estado();
   },
@@ -683,7 +669,7 @@ const VA = {
   },
   iniciar(){
     this.pantalla('  SMART VIAL', 'Transito intelig');
-    this.set(1,1,1,1,1); this.cuenta = 8; this.estado();
+    this.set(1,1,1,1,1); this.cuenta = -1; this.estado();
     setTimeout(() => { this.ev('LCD encontrada'); this.listo = true; this.cambiar(0); }, 1200);
   },
   tick(){

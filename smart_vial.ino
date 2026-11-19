@@ -4,9 +4,8 @@
 
   - Ultrasonico 1 (peaton): detecta a la persona que llega al cruce.
   - Ultrasonico 2 (vehiculo): detecta el auto que se acerca y calcula su velocidad.
-  - Semaforo de autos (rojo, amarillo, verde) y de peatones (rojo, verde).
-  - Display de 7 segmentos (con 74HC595): cuenta 9 -> 0 mientras el peaton cruza.
-  - LCD 16x2 I2C: "PUEDE CRUZAR", "ESPERE", etc.
+  - 2 modulos de semaforo LED (R, Y, G, GND): uno para autos y uno para peatones.
+  - LCD 16x2 I2C: "PUEDE CRUZAR 9s" (cuenta 9 -> 0), "ESPERE", etc.
   - Matriz 8x8 MAX7219: muñeco parado / muñeco caminando.
   - Buzzer: pitidos de cruce (ayuda a personas con poca vision) y alarma.
   - Modulo de comunicacion en D0/D1 (HC-05 o modulo WiFi en modo serial, 9600):
@@ -17,12 +16,14 @@
   D2  TRIG ultrasonico peaton                     D3  ECHO ultrasonico peaton
   D4  TRIG ultrasonico vehiculo                   D5  ECHO ultrasonico vehiculo
   D6  Buzzer (+)
-  D7  74HC595 pin 14 (DS)   D8 74HC595 pin 12 (ST_CP / latch)   D9 74HC595 pin 11 (SH_CP / clock)
+  D7  Modulo semaforo PEATON  R      D8  Modulo semaforo PEATON  Y (no se usa, queda apagado)
+  D9  Modulo semaforo PEATON  G      GND del modulo peaton -> GND
   D10 MAX7219 CS            D11 MAX7219 DIN                     D13 MAX7219 CLK
-  D12 LED verde peaton
-  A0  LED rojo autos   A1 LED amarillo autos   A2 LED verde autos   A3 LED rojo peaton
+  A0  Modulo semaforo AUTOS   R      A1  Modulo semaforo AUTOS   Y
+  A2  Modulo semaforo AUTOS   G      GND del modulo autos  -> GND
   A4  SDA LCD          A5 SCL LCD
-  Cada LED lleva su resistencia de 220 ohm. El display: una de 220 ohm por segmento.
+  Los modulos de semaforo ya traen sus resistencias: se conectan directo, sin resistencias.
+  Quedan libres: D12 y A3.
 
   IMPORTANTE: desconecta el cable de D0 (RX) mientras subes el programa.
   Libreria necesaria: LiquidCrystal I2C (Frank de Brabander).
@@ -35,13 +36,12 @@
 const byte P_TRIG = 2, P_ECHO = 3;      // ultrasonico peaton
 const byte V_TRIG = 4, V_ECHO = 5;      // ultrasonico vehiculo
 const byte BUZZER = 6;
-const byte SR_DATA = 7, SR_LATCH = 8, SR_CLK = 9;   // 74HC595 (7 segmentos)
 const byte MX_CS = 10, MX_DIN = 11, MX_CLK = 13;    // MAX7219 (matriz)
-const byte LED_PEAT_V = 12;
-const byte LED_AUTO_R = A0, LED_AUTO_A = A1, LED_AUTO_V = A2, LED_PEAT_R = A3;
+const byte LED_AUTO_R = A0, LED_AUTO_A = A1, LED_AUTO_V = A2;   // modulo semaforo autos
+const byte LED_PEAT_R = 7, LED_PEAT_A = 8, LED_PEAT_V = 9;      // modulo semaforo peaton
 
 // ---------- ajustes ----------
-const bool ANODO_COMUN = false;   // true si tu display de 7 segmentos es de anodo comun
+const bool SEMAFORO_INVERTIDO = false; // true si tu modulo de semaforo prende al reves (anodo comun)
 const bool ESPEJO_MATRIZ = false; // true si el muñeco sale al reves
 int  UMBRAL_P = 20;   // cm: a esta distancia o menos hay un peaton
 int  UMBRAL_V = 15;   // cm: a esta distancia o menos hay un vehiculo en el cruce
@@ -64,7 +64,7 @@ String lcd1 = "", lcd2 = "";
 int dP = 300, dV = 300;          // distancias en cm
 int cuentaP = 0, cuentaV = 0;    // lecturas seguidas que confirman
 bool peaton = false, vehiculo = false, pedido = false;
-int cuenta = -1;                 // numero del 7 segmentos (-1 = apagado)
+int cuenta = -1;                 // segundos que le quedan al peaton (-1 = no hay cruce)
 float velocidad = 0;             // cm/s del vehiculo que se acerca
 int dVant = -1; unsigned long tVant = 0;
 unsigned int cruces = 0;
@@ -80,7 +80,6 @@ const byte M_PARADO[8]  = {0x18,0x18,0x00,0x3C,0x5A,0x18,0x24,0x24};
 const byte M_CAMINA1[8] = {0x0C,0x0C,0x00,0x1C,0x2E,0x0C,0x14,0x22};
 const byte M_CAMINA2[8] = {0x0C,0x0C,0x00,0x1C,0x1C,0x0C,0x0C,0x14};
 const byte M_ALERTA[8]  = {0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x18};
-const byte DIGITOS[10]  = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};
 
 // ================== MAX7219 (sin libreria) ==================
 void mxEnviar(byte reg, byte val) {
@@ -106,15 +105,6 @@ void mxIniciar() {
   mxEnviar(0x0A, 4);  // brillo
   mxEnviar(0x0C, 1);  // encendida
   mxDibujar(M_PARADO);
-}
-
-// ================== 7 segmentos (74HC595) ==================
-void segMostrar(int n) {
-  byte b = (n >= 0 && n <= 9) ? DIGITOS[n] : (n == -2 ? 0x40 : 0x00); // -2 = guion
-  if (ANODO_COMUN) b = ~b;
-  digitalWrite(SR_LATCH, LOW);
-  shiftOut(SR_DATA, SR_CLK, MSBFIRST, b);
-  digitalWrite(SR_LATCH, HIGH);
 }
 
 // ================== LCD ==================
@@ -178,12 +168,14 @@ void leerSensores() {
   }
 }
 
-// ================== luces ==================
+// ================== luces (modulos de semaforo) ==================
+void luz(byte pin, bool on) { digitalWrite(pin, (on != SEMAFORO_INVERTIDO) ? HIGH : LOW); }
+bool L(byte pin) { return (digitalRead(pin) == HIGH) != SEMAFORO_INVERTIDO; }
 void luces(bool aR, bool aA, bool aV, bool pR, bool pV) {
-  digitalWrite(LED_AUTO_R, aR); digitalWrite(LED_AUTO_A, aA); digitalWrite(LED_AUTO_V, aV);
-  digitalWrite(LED_PEAT_R, pR); digitalWrite(LED_PEAT_V, pV);
+  luz(LED_AUTO_R, aR); luz(LED_AUTO_A, aA); luz(LED_AUTO_V, aV);
+  luz(LED_PEAT_R, pR); luz(LED_PEAT_V, pV);
+  luz(LED_PEAT_A, 0);   // el amarillo del peaton no se usa
 }
-bool L(byte pin) { return digitalRead(pin) == HIGH; }
 
 void evento(String t) { Serial.print(F("EV,")); Serial.println(t); }
 
@@ -191,7 +183,7 @@ void cambiar(Fase f) {
   fase = f; tFase = millis();
   switch (f) {
     case VERDE:
-      luces(0, 0, 1, 1, 0); cuenta = -1; segMostrar(-1); mxDibujar(M_PARADO);
+      luces(0, 0, 1, 1, 0); cuenta = -1; mxDibujar(M_PARADO);
       evento("Autos en verde"); break;
     case ESPERA_AUTO:
       evento("Peaton espera: hay un vehiculo en el cruce"); break;
@@ -200,13 +192,13 @@ void cambiar(Fase f) {
     case TODO_ROJO:
       luces(1, 0, 0, 1, 0); evento("Autos en rojo"); break;
     case CRUCE:
-      luces(1, 0, 0, 0, 1); cuenta = 9; segMostrar(9); alarmaDada = false;
+      luces(1, 0, 0, 0, 1); cuenta = 9; alarmaDada = false;
       cruces++; evento("PUEDE CRUZAR (cruce #" + String(cruces) + ")"); pitar(1, 120, 0, 2400); break;
     case FIN:
-      luces(1, 0, 0, 1, 0); cuenta = -1; segMostrar(-1); mxDibujar(M_PARADO);
+      luces(1, 0, 0, 1, 0); cuenta = -1; mxDibujar(M_PARADO);
       pedido = false; evento("Fin del cruce"); pitar(2, 90, 90, 1200); break;
     case INTERMITENTE:
-      luces(0, 0, 0, 0, 0); cuenta = -1; segMostrar(-2); mxDibujar(M_ALERTA);
+      luces(0, 0, 0, 0, 0); cuenta = -1; mxDibujar(M_ALERTA);
       pedido = false; evento("Modo intermitente (mantenimiento)"); break;
   }
 }
@@ -237,11 +229,11 @@ void actualizarFase() {
       int n = 9 - (int)(t / 1000);
       if (n < 0) { cambiar(FIN); break; }
       if (n != cuenta) {
-        cuenta = n; segMostrar(n);
+        cuenta = n;
         if (n <= 3) pitar(2, 60, 60, 2600); else pitar(1, 60, 0, 2400);
       }
       // ultimos 3 segundos: el verde del peaton parpadea
-      digitalWrite(LED_PEAT_V, (n <= 3 && (t % 500) >= 250) ? LOW : HIGH);
+      luz(LED_PEAT_V, !(n <= 3 && (t % 500) >= 250));
       if (millis() - tAnim >= 300) { tAnim = millis(); cuadro ^= 1; mxDibujar(cuadro ? M_CAMINA1 : M_CAMINA2); }
       String l1 = "PUEDE CRUZAR " + String(n) + "s";
       if (vehiculo && velocidad > VEL_ALERTA) {
@@ -255,7 +247,7 @@ void actualizarFase() {
       break;
     case INTERMITENTE: {
       bool on = (t % 1000) < 500;
-      digitalWrite(LED_AUTO_A, on); digitalWrite(LED_PEAT_R, on);
+      luz(LED_AUTO_A, on); luz(LED_PEAT_R, on);
       pantalla("MANTENIMIENTO", "Cruce con cuidado");
       break; }
   }
@@ -312,9 +304,8 @@ void setup() {
   pinMode(P_TRIG, OUTPUT); pinMode(P_ECHO, INPUT);
   pinMode(V_TRIG, OUTPUT); pinMode(V_ECHO, INPUT);
   pinMode(BUZZER, OUTPUT);
-  pinMode(SR_DATA, OUTPUT); pinMode(SR_LATCH, OUTPUT); pinMode(SR_CLK, OUTPUT);
-  pinMode(LED_PEAT_V, OUTPUT);
-  pinMode(LED_AUTO_R, OUTPUT); pinMode(LED_AUTO_A, OUTPUT); pinMode(LED_AUTO_V, OUTPUT); pinMode(LED_PEAT_R, OUTPUT);
+  pinMode(LED_AUTO_R, OUTPUT); pinMode(LED_AUTO_A, OUTPUT); pinMode(LED_AUTO_V, OUTPUT);
+  pinMode(LED_PEAT_R, OUTPUT); pinMode(LED_PEAT_A, OUTPUT); pinMode(LED_PEAT_V, OUTPUT);
 
   Serial.println(F("EV,Smart Vial iniciando"));
   Wire.begin();
@@ -327,7 +318,7 @@ void setup() {
   mxIniciar();
 
   // prueba de luces al encender
-  luces(1, 1, 1, 1, 1); segMostrar(8);
+  luces(1, 1, 1, 1, 1); luz(LED_PEAT_A, 1);   // prueba: prenden todas las luces de los 2 modulos
   pantalla("  SMART VIAL", "Transito intelig");
   pitar(1, 150, 0, 2000);
   delay(1200);
