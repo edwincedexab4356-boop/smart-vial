@@ -243,7 +243,7 @@ ul.lista li{margin:4px 0}
       <div class="card">
         <h3>Conexión</h3>
         <div class="aviso" id="soporte"></div>
-        <p class="nota" style="margin:0">Con <b>Conectar USB</b> (cable) o <b>Conectar Bluetooth</b> (HC-05 emparejado) la página deja de simular y muestra lo que mide el Arduino real.</p>
+        <p class="nota" style="margin:0">Con <b>Conectar USB</b> (cable) o <b>Conectar Bluetooth</b> (HC-06 emparejado, clave 1234) la página deja de simular y muestra lo que mide el Arduino real.</p>
       </div>
     </div>
   </div>
@@ -256,8 +256,8 @@ ul.lista li{margin:4px 0}
       <h3>Pines del Arduino UNO</h3>
       <table>
         <tr><th>Pin</th><th>Va a</th></tr>
-        <tr><td><span class="pin">D0</span></td><td>TX del módulo de comunicación (HC-05 / WiFi)</td></tr>
-        <tr><td><span class="pin">D1</span></td><td>RX del módulo, <b>con divisor</b> (ver abajo)</td></tr>
+        <tr><td><span class="pin">D0</span></td><td><b>TXD</b> del Bluetooth HC-06</td></tr>
+        <tr><td><span class="pin">D1</span></td><td><b>RXD</b> del HC-06, <b>con divisor</b> (ver abajo)</td></tr>
         <tr><td><span class="pin">D2</span></td><td>TRIG ultrasónico <b>peatón</b></td></tr>
         <tr><td><span class="pin">D3</span></td><td>ECHO ultrasónico <b>peatón</b></td></tr>
         <tr><td><span class="pin">D4</span></td><td>TRIG ultrasónico <b>vehículo</b></td></tr>
@@ -287,15 +287,25 @@ ul.lista li{margin:4px 0}
           <tr><td>Módulo semáforo <b>autos</b></td><td>R → A0 · Y → A1 · G → A2 · GND → GND. Si prende al revés (encendido cuando debería estar apagado), en el código pongan <code>SEMAFORO_INVERTIDO = true</code>.</td></tr>
           <tr><td>LEDs del <b>peatón</b></td><td>Rojo → D7 · Verde → D8, cada uno con su resistencia de 220 Ω. Pata corta a GND.</td></tr>
           <tr><td>Buzzer</td><td>(+) → D6 · (−) → GND</td></tr>
-          <tr><td>HC-05</td><td>VCC → 5V · GND → GND · TXD → D0 · RXD ← D1 con divisor: D1 → 1 kΩ → RXD → 2 kΩ → GND (o con 220 Ω: 1 de arriba y 2 en serie abajo).</td></tr>
+          <tr><td>Bluetooth HC-06</td><td>VCC → 5V · GND → GND · TXD → D0 · RXD ← D1 con divisor: D1 → 1 kΩ → RXD → 2 kΩ → GND (o con 220 Ω: 1 de arriba y 2 en serie abajo). El RXD del HC-06 es de 3,3 V: sin el divisor se puede dañar.</td></tr>
         </table>
+      </div>
+      <div class="card">
+        <h3>Emparejar el HC-06</h3>
+        <ul class="lista">
+          <li>Al encender, la luz roja del HC-06 <b>parpadea</b>: está esperando conexión. Cuando queda <b>fija</b>, ya está conectado.</li>
+          <li>En la computadora (Windows: Configuración → Bluetooth → Agregar dispositivo) o en el celular, busquen <b>HC-06</b> y pongan la clave <b>1234</b> (si no sirve, prueben 0000).</li>
+          <li>Ya emparejado, en esta página pulsen <b>Conectar Bluetooth</b> y elijan el HC-06 (en Windows puede salir como “Puerto serie estándar sobre Bluetooth”: elijan el de <b>salida</b>).</li>
+          <li>También se maneja con una app Bluetooth del celular Android (por ejemplo <b>Serial Bluetooth Terminal</b>) mandando estas letras: <code>P</code> peatón · <code>M</code> mantenimiento · <code>N</code> normal · <code>S</code> silenciar · <code>A</code> activar buzzer · <code>E</code> estado.</li>
+          <li>El HC-06 viene a <b>9600</b> de fábrica, igual que el programa. No hay que configurarlo.</li>
+        </ul>
       </div>
       <div class="card">
         <h3>Antes de subir el programa</h3>
         <ul class="lista">
           <li>En el Arduino IDE instalen la librería <b>LiquidCrystal I2C</b> (Frank de Brabander).</li>
           <li>Placa: <b>Arduino UNO</b>.</li>
-          <li><b>Quiten el cable de D0</b> mientras suben el programa. Después lo vuelven a poner.</li>
+          <li><b>Quiten el cable de D0</b> (TXD del HC-06) mientras suben el programa: el HC-06 y el USB usan los mismos pines. Después lo vuelven a poner.</li>
           <li>Al encender, todas las luces (módulo y LEDs) prenden 1 segundo: así comprueban que están bien conectadas.</li>
           <li>Si el muñeco de la matriz sale al revés: <code>ESPEJO_MATRIZ = true</code>.</li>
         </ul>
@@ -310,7 +320,7 @@ ul.lista li{margin:4px 0}
           <li>LCD 16x2 con módulo I2C</li>
           <li>Matriz 8x8 con MAX7219</li>
           <li>Buzzer</li>
-          <li>Módulo de comunicación: HC-05 (o el módulo WiFi que tengan)</li>
+          <li>Módulo Bluetooth <b>HC-06</b> + resistencias de 1 kΩ y 2 kΩ (divisor)</li>
           <li>Protoboard y cables macho-macho / macho-hembra</li>
         </ul>
       </div>
@@ -342,6 +352,7 @@ ul.lista li{margin:4px 0}
       <tr><td><code>UMBRAL_P:20</code></td><td>Distancia (cm) a la que se detecta al peatón</td></tr>
       <tr><td><code>UMBRAL_V:15</code></td><td>Distancia (cm) a la que se detecta al vehículo</td></tr>
       <tr><td><code>ESTADO</code></td><td>Pide el estado y el texto de la LCD</td></tr>
+      <tr><td><code>P</code> <code>M</code> <code>N</code> <code>S</code> <code>A</code> <code>E</code></td><td>Atajos de una letra para apps del celular: peatón, mantenimiento, normal, silenciar, activar buzzer, estado. Sirven aunque la app no mande “enter”.</td></tr>
     </table>
   </div>
   <div class="card" style="margin-top:14px">
@@ -807,12 +818,12 @@ $('rUV').oninput = () => $('tUV').textContent = $('rUV').value;
 $('rUP').onchange = () => mandar('UMBRAL_P:' + $('rUP').value);
 $('rUV').onchange = () => mandar('UMBRAL_V:' + $('rUV').value);
 
-/* ---------- conexión real: HC-05 o USB (Web Serial) ---------- */
+/* ---------- conexión real: HC-06 o USB (Web Serial) ---------- */
 const SPP = '00001101-0000-1000-8000-00805f9b34fb';
 const haySerial = 'serial' in navigator;
 $('soporte').className = 'aviso ' + (haySerial ? 'bien' : 'malo');
 $('soporte').innerHTML = haySerial
-  ? '✔ Este navegador puede conectarse al Arduino por USB o por el HC-05.'
+  ? '✔ Este navegador puede conectarse al Arduino por USB o por el Bluetooth HC-06.'
   : '✖ Este navegador no permite conectar. Usa <b>Google Chrome</b> en la computadora o en Android (el iPhone no lo permite). La simulación sí funciona aquí.';
 $('bBt').disabled = $('bUsb').disabled = !haySerial;
 let puerto = null, lector = null, escritor = null, buffer = '';
@@ -842,12 +853,12 @@ async function conectar(bt){
     limpiarMundo();
     S.modo = 'real'; S.vivo = Date.now();
     $('ctrlSim').hidden = true; $('bDesc').disabled = false;
-    log('Conectado a <b>' + (bt ? 'HC-05' : 'Arduino por USB') + '</b>');
+    log('Conectado a <b>' + (bt ? 'Bluetooth HC-06' : 'Arduino por USB') + '</b>');
     setTimeout(() => enviarReal('ESTADO'), 1500);
     setTimeout(() => enviarReal('ESTADO'), 2500);
     leerSerial(); pintar();
   } catch (e) {
-    if (e.name === 'NotFoundError') log('No se eligió ningún equipo. ¿Está emparejado el HC-05?', true);
+    if (e.name === 'NotFoundError') log('No se eligió ningún equipo. ¿Está emparejado el HC-06 (clave 1234)?', true);
     else log('No se pudo conectar: ' + esc(e.message || e), true);
   }
 }

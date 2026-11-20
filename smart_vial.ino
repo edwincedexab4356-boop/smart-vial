@@ -9,11 +9,13 @@
   - LCD 16x2 I2C: "PUEDE CRUZAR 9s" (cuenta 9 -> 0), "ESPERE", etc.
   - Matriz 8x8 MAX7219: muñeco parado / muñeco caminando.
   - Buzzer: pitidos de cruce (ayuda a personas con poca vision) y alarma.
-  - Modulo de comunicacion en D0/D1 (HC-05 o modulo WiFi en modo serial, 9600):
-    manda el estado y recibe ordenes del simulador web.
+  - Bluetooth HC-06 en D0/D1 (9600, viene asi de fabrica; nombre "HC-06", clave 1234):
+    manda el estado y recibe ordenes del simulador web o de una app Bluetooth del celular
+    (por ejemplo "Serial Bluetooth Terminal" o "Arduino Bluetooth Controller").
 
   CONEXIONES
-  D0  RX  <- TX del modulo (HC-05 / WiFi)        D1  TX  -> RX del modulo (con divisor si es de 3.3 V)
+  D0  RX  <- TXD del HC-06                       D1  TX  -> RXD del HC-06 con divisor (1k arriba, 2k abajo)
+  HC-06: VCC -> 5V, GND -> GND
   D2  TRIG ultrasonico peaton                     D3  ECHO ultrasonico peaton
   D4  TRIG ultrasonico vehiculo                   D5  ECHO ultrasonico vehiculo
   D6  Buzzer (+)
@@ -27,7 +29,10 @@
   Los LEDs del peaton: pata larga al pin con su resistencia de 220 ohm, pata corta a GND.
   Quedan libres: D9, D12 y A3.
 
-  IMPORTANTE: desconecta el cable de D0 (RX) mientras subes el programa.
+  IMPORTANTE: el HC-06 comparte D0/D1 con el USB. Desconecta el cable de D0 (TXD del HC-06)
+  mientras subes el programa y vuelve a ponerlo despues.
+  Comandos cortos (una letra, sirven en apps que no mandan "enter"):
+    P = peaton   M = mantenimiento   N = normal   S = silenciar   A = activar buzzer   E = estado
   Libreria necesaria: LiquidCrystal I2C (Frank de Brabander).
 */
 
@@ -76,6 +81,7 @@ unsigned long tSt = 0, tSensor = 0, tAnim = 0;
 byte cuadro = 0;
 bool turnoSensor = false;
 String entrada = "";
+unsigned long tEntrada = 0;   // ultima letra recibida (para apps que no mandan "enter")
 
 // ---------- dibujos de la matriz ----------
 const byte M_PARADO[8]  = {0x18,0x18,0x00,0x3C,0x5A,0x18,0x24,0x24};
@@ -273,6 +279,13 @@ void enviarEstado() {
 
 void comando(String c) {
   c.trim(); c.toUpperCase();
+  // comandos de una letra para apps Bluetooth del celular
+  if (c == "P") c = "PEATON";
+  else if (c == "M") c = "MANT:1";
+  else if (c == "N") c = "MANT:0";
+  else if (c == "S") c = "SILENCIO:1";
+  else if (c == "A") c = "SILENCIO:0";
+  else if (c == "E") c = "ESTADO";
   if (c == "ESTADO") { lcd1 = ""; }
   else if (c == "PEATON") {
     if (fase == VERDE || fase == ESPERA_AUTO) { pedido = true; evento("Boton de peaton (app)"); pitar(1, 60, 0, 1800); }
@@ -297,7 +310,10 @@ void leerSerial() {
     char ch = Serial.read();
     if (ch == '\n' || ch == '\r') { if (entrada.length()) comando(entrada); entrada = ""; }
     else if (entrada.length() < 40) entrada += ch;
+    tEntrada = millis();
   }
+  // si la app no manda "enter", el comando se toma tras 150 ms sin letras nuevas
+  if (entrada.length() && millis() - tEntrada > 150) { comando(entrada); entrada = ""; }
 }
 
 // ================== inicio ==================
@@ -309,7 +325,7 @@ void setup() {
   pinMode(LED_AUTO_R, OUTPUT); pinMode(LED_AUTO_A, OUTPUT); pinMode(LED_AUTO_V, OUTPUT);
   pinMode(LED_PEAT_R, OUTPUT); pinMode(LED_PEAT_V, OUTPUT);
 
-  Serial.println(F("EV,Smart Vial iniciando"));
+  Serial.println(F("EV,Smart Vial iniciando (Bluetooth HC-06)"));
   Wire.begin();
   Wire.setWireTimeout(3000, true);   // si la LCD esta mal conectada, no se traba
   byte dir = existeI2C(0x27) ? 0x27 : (existeI2C(0x3F) ? 0x3F : 0);
